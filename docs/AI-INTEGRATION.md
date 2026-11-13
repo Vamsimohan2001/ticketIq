@@ -36,7 +36,7 @@ Each step fails on its own. A broken model never throws out of the pipeline; it 
 * Output is validated, so an obeyed injection that produces garbage is caught and repaired or escalated.
 * Four labelled injection tickets are part of the evaluation set.
 
-## Resilience (`ResilientAiExecutor`, hand-written, no library)
+## Resilience (`ResilientAiExecutor`)
 
 * Timeout per call (`AI_TIMEOUT_SECONDS`).
 * Retries with exponential backoff (`AI_MAX_RETRIES`), skipped for non-retryable errors such as HTTP 401.
@@ -46,5 +46,5 @@ Each step fails on its own. A broken model never throws out of the pipeline; it 
 ## Providers
 
 `mock` (offline), `gemini` (REST `generateContent` and `embedContent`, key sent in a header), `ollama` (`/api/chat`,
-`/api/embed`). The clients use only `java.net.http`, so there is no SDK version to keep in step. A Spring AI adapter could
-implement the two small interfaces `ChatModel` and `EmbeddingModel` if you want to showcase it.
+`/api/embed`). The clients use Java's built-in `java.net.http` package. Provider integrations implement the `ChatModel` and
+`EmbeddingModel` interfaces.

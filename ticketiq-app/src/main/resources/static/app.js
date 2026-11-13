@@ -1,4 +1,4 @@
-/* TicketIQ browser UI: plain JavaScript, no build step. It talks to the REST API under /api. */
+/* TicketIQ portal UI. */
 (() => {
   'use strict';
 
@@ -19,7 +19,7 @@
   const state = { user: null, tokens: null, meta: null, view: 'tickets', ticketId: null,
                   filters: { q: '', status: '', category: '', priority: '' }, page: 0, poll: null };
 
-  // ------------------------------------------------------------------ helpers
+  // Helpers
   const $app = document.getElementById('app');
   const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   const label = (s) => String(s ?? '').replace(/_/g, ' ').toLowerCase().replace(/^./, (c) => c.toUpperCase());
@@ -94,7 +94,7 @@
 
   function stopPolling() { if (state.poll) { clearInterval(state.poll); state.poll = null; } }
 
-  // -------------------------------------------------------------------- login
+  // Sign-in
   async function renderLogin(mode = 'login', prefillUserId = '') {
     try { state.meta = await api('/meta', { auth: false }); } catch (e) { state.meta = null; }
     const m = state.meta;
@@ -103,21 +103,21 @@
     $app.innerHTML = `
       <div class="login-wrap"><section class="login stack">
         <div class="brand"><img src="favicon.svg" alt="">TicketIQ</div>
-        <p class="muted">Create an account to raise and follow incidents. AI helps route issues; people remain responsible for decisions.</p>
+        <p class="muted">Use this portal to report an issue and keep track of your tickets. Support staff review and manage each report.</p>
         <div class="login-guide">
           <h2>How the portal works</h2>
-          <ol><li>Sign in or create a profile using your employee ID.</li>
-            <li>Describe the issue with a title, steps, and business impact.</li>
-            <li>AI compares it with knowledge articles and resolved incidents, then suggests a category and team.</li>
-            <li>Support staff review the recommendation and update your ticket.</li></ol>
-          <p class="small muted">Your profile details identify you in the portal. Personal data in ticket text is redacted before AI processing.</p>
+          <ol><li>Sign in, or create an account with your employee ID.</li>
+            <li>Give the issue a clear title and describe what happened and who is affected.</li>
+            <li>TicketIQ checks the report against support articles and resolved incidents, then suggests a category and team.</li>
+            <li>A support agent reviews the ticket and keeps you updated.</li></ol>
+          <p class="small muted">Your profile identifies you in the portal. Personal information in ticket text is removed before it is sent for analysis.</p>
         </div>
         <div class="login-guide role-guide">
           <h2>Roles and access</h2>
-          <p class="small muted">Access increases from USER to AGENT to ADMIN; each higher role includes the support work below it.</p>
+          <p class="small muted">Each role has different access. ADMIN includes agent permissions; USER accounts are for reporting and following personal tickets.</p>
           ${roleAccess.map(([role, description]) => `<p><b>${role}</b> — ${esc(description)}</p>`).join('')}
         </div>
-        ${m ? `<div class="callout info small">AI provider: <b>${esc(m.aiProvider)}</b> (${esc(m.aiModel)})${m.aiProvider === 'mock' ? ' &middot; offline demo AI, no API key needed' : ''}</div>` : ''}
+        ${m ? `<div class="callout info small">Analysis service: <b>${esc(m.aiProvider)}</b> (${esc(m.aiModel)})${m.aiProvider === 'mock' ? ' &middot; local keyword analysis; no API key required' : ''}</div>` : ''}
         ${signingUp ? `
           <form class="stack auth-form" id="signup-form" novalidate>
             <h2>Create your profile</h2>
@@ -193,7 +193,7 @@
     }
   }
 
-  // -------------------------------------------------------------------- shell
+  // App shell
   const NAV = [
     ['tickets', isStaff() ? 'Ticket queue' : 'Active incidents', false], ['new', 'New ticket', false], ['kb', 'Knowledge base', true],
     ['insights', 'Insights', true], ['lab', 'AI Lab', true], ['profile', 'My profile', false]
@@ -235,7 +235,7 @@
     (views[state.view] || viewTickets)(main).catch((e) => { main.innerHTML = `<div class="card"><h2>Something went wrong</h2><p class="muted">${esc(e.message)}</p></div>`; });
   }
 
-  // ------------------------------------------------------------------ tickets
+  // Ticket queue
   async function viewTickets(main) {
     const f = state.filters;
     const params = new URLSearchParams({ page: state.page, size: 15 });
@@ -246,7 +246,7 @@
         ? (state.user.role === 'ADMIN'
           ? 'Review current and resolved incidents, inspect AI analysis, assign and resolve tickets, manage support resources, and administer AI settings.'
           : 'Review and assign incoming incidents, check AI analysis and past resolved cases, update status, and communicate with requesters. User administration, knowledge-base editing, and AI controls are reserved for admins.')
-        : 'Track only your own active incidents. Completed incidents and other users’ ticket history are not available to USER accounts. To report another issue, choose New ticket.')}
+        : 'Follow your active tickets here. Completed incidents and other employees’ tickets are only visible to support staff. Choose New ticket to report another issue.')}
       <div class="row" style="margin-bottom:1rem">
         <button class="btn primary right" id="new-ticket">New ticket</button></div>
       <div class="filters">
@@ -286,17 +286,17 @@
     document.getElementById('next').addEventListener('click', () => { state.page++; renderView(); });
   }
 
-  // --------------------------------------------------------------- new ticket
+  // New tickets
   async function viewNew(main) {
     main.innerHTML = `
-      ${pageIntro('Raise an incident', 'Explain what happened, when it started, and who or what is affected. TicketIQ uses the title and description to compare your issue with the knowledge base and past resolved incidents, then recommends a priority, category, and support team. A support person reviews the recommendation.')}
-      <div class="card route-guide"><h2>Suggested support teams</h2><p class="muted small">The team is recommended from the AI category and can be changed by support staff.</p>
+      ${pageIntro('Raise an incident', 'Describe what happened, when it began, and who or what is affected. TicketIQ checks your report against support articles and resolved incidents, then suggests a priority, category, and support team. An agent reviews the suggestions.')}
+      <div class="card route-guide"><h2>Support teams</h2><p class="muted small">TicketIQ suggests a team based on the issue category. An agent can change the assignment.</p>
         <div class="team-grid">${Object.entries((state.meta && state.meta.teams) || {}).map(([category, team]) =>
           `<div><b>${esc(label(category))}</b><span>${esc(team)}</span></div>`).join('')}</div></div>
       <form class="card stack" id="ticket-form" style="max-width:720px" novalidate>
         <div class="field"><label for="t-title">Title</label><input id="t-title" maxlength="200" required></div>
         <div class="field"><label for="t-desc">What is happening?</label><textarea id="t-desc" rows="6" maxlength="4000" required></textarea>
-          <div class="muted small">Add error messages, steps to reproduce, and business impact. Personal data such as emails, phone and card numbers is removed before the AI sees ticket text.</div></div>
+          <div class="muted small">Add error messages, steps to reproduce, and business impact. Email addresses, phone numbers, and payment-card numbers are removed before analysis.</div></div>
         <div class="field-error" id="t-error" role="alert"></div>
         <div class="row"><button class="btn primary" type="submit">Submit ticket</button></div>
         <div class="muted small">Try a sample:</div>
@@ -317,7 +317,7 @@
     });
   }
 
-  // ------------------------------------------------------------ ticket detail
+  // Ticket details
   async function viewTicket(main) {
     const id = state.ticketId;
     const [t, comments] = await Promise.all([api('/tickets/' + id), api('/tickets/' + id + '/comments')]);
@@ -425,11 +425,11 @@
     }, 1500);
   }
 
-  // ----------------------------------------------------------- knowledge base
+  // Knowledge base
   async function viewKb(main) {
     const items = await api('/kb');
     const admin = state.user.role === 'ADMIN';
-    main.innerHTML = `${pageIntro('Knowledge base', 'These support articles provide trusted guidance for AI-generated reply drafts. TicketIQ retrieves relevant passages alongside similar resolved incidents; admins can add or update the material used for those suggestions.')}
+    main.innerHTML = `${pageIntro('Knowledge base', 'Browse support articles used when TicketIQ looks for guidance and prepares reply suggestions. Admins can add, edit, or remove articles.')}
       ${admin ? `<form class="card stack" id="kb-form" style="max-width:760px"><h2 id="kb-heading">Add an article</h2><input type="hidden" id="kb-id">
         <div class="field"><label for="kb-title">Title</label><input id="kb-title" maxlength="200"></div>
         <div class="field"><label for="kb-content">Content</label><textarea id="kb-content" rows="4" maxlength="4000"></textarea></div>
@@ -457,12 +457,12 @@
       ev.preventDefault();
       const id = document.getElementById('kb-id').value;
       const body = { title: document.getElementById('kb-title').value, content: document.getElementById('kb-content').value, tags: document.getElementById('kb-tags').value };
-      try { await api(id ? '/kb/' + id : '/kb', { method: id ? 'PUT' : 'POST', body }); toast('Article saved and sent to the AI index'); renderView(); }
+      try { await api(id ? '/kb/' + id : '/kb', { method: id ? 'PUT' : 'POST', body }); toast('Article saved'); renderView(); }
       catch (e) { document.getElementById('kb-error').textContent = e.message; }
     });
   }
 
-  // ----------------------------------------------------------------- insights
+  // Insights
   function bars(map, total) {
     const entries = Object.entries(map || {}).sort((a, b) => b[1] - a[1]);
     if (!entries.length) return '<div class="muted small">No data yet.</div>';
@@ -473,7 +473,7 @@
     const s = await api('/stats');
     const ai = s.ai;
     const pct = (v) => v == null ? '–' : Math.round(v * 100) + '%';
-    main.innerHTML = `${pageIntro('Insights', 'Understand ticket volume and workflow outcomes. AI confidence and agent feedback are signals for review, not a replacement for human judgment.')}
+    main.innerHTML = `${pageIntro('Insights', 'See ticket totals and how incidents are handled. Recommendation confidence and agent feedback can help identify results that need review.')}
       <div class="kpis">
         <div class="kpi"><span class="muted small">Total tickets</span><b>${s.totalTickets}</b></div>
         <div class="kpi"><span class="muted small">Triaged by AI</span><b>${ai.triagedByAi}</b></div>
@@ -486,24 +486,24 @@
       <div class="card"><h2>By category</h2>${bars(s.byCategory, s.totalTickets)}</div>`;
   }
 
-  // -------------------------------------------------------------------- AI lab
+  // AI tools
   async function viewLab(main) {
     const admin = state.user.role === 'ADMIN';
     const stats = admin ? await api('/ai/stats') : null;
-    main.innerHTML = `${pageIntro('AI Lab', 'Explore how the configured AI analyzes an example without creating a ticket. Admins can also check model health and temporarily switch AI off; tickets remain usable and wait for human review.')}
-      <div class="grid-2"><form class="card stack" id="lab-form"><h2>Try the pipeline (nothing is saved)</h2>
+    main.innerHTML = `${pageIntro('AI Lab', 'Test the configured analysis service without creating a ticket. Admins can check service health and turn analysis off temporarily; tickets can still be submitted for staff review.')}
+      <div class="grid-2"><form class="card stack" id="lab-form"><h2>Test an example (nothing is saved)</h2>
         <div class="field"><label for="l-title">Title</label><input id="l-title" value="Reset email is not arriving"></div>
         <div class="field"><label for="l-desc">Description</label><textarea id="l-desc" rows="5">I pressed Forgot password but the reset email never arrives. Contact me at asha.rao@example.com or 9876543210.</textarea></div>
         <button class="btn ai" type="submit">Run AI pipeline</button><div id="lab-result"></div></form>
       <div>${admin ? `<div class="card stack"><h2>AI status</h2>
-        <div class="row small"><span class="chip ai">${esc(stats.provider)}</span><span class="muted">${esc(stats.chatModel)} &middot; embeddings ${esc(stats.embeddingModel)}</span></div>
+        <div class="row small"><span class="chip ai">${esc(stats.provider)}</span><span class="muted">${esc(stats.chatModel)} &middot; Embeddings: ${esc(stats.embeddingModel)}</span></div>
         <div class="row small"><span>Circuit breaker: <b>${esc(stats.circuit)}</b></span><span>Indexed documents: <b>${stats.indexedDocuments}</b></span></div>
         <div class="row small"><span>Model calls: <b>${stats.metrics.modelCalls}</b></span><span>Failures: <b>${stats.metrics.modelFailures}</b></span><span>Avg latency: <b>${stats.metrics.averageLatencyMs} ms</b></span><span>Cache hits: <b>${stats.metrics.cacheHits}</b></span></div>
         <label class="row" style="font-weight:500"><input type="checkbox" id="ai-switch" style="width:auto" ${stats.enabled ? 'checked' : ''}> AI enabled
-          <span class="muted small">Switch off, create a ticket, switch back on: the ticket still gets triaged.</span></label></div>
-        <div class="card table-wrap"><h2>Recent model calls</h2><table><thead><tr><th>Kind</th><th>Ticket</th><th>ms</th><th>OK</th></tr></thead><tbody>
+          <span class="muted small">Tickets submitted while analysis is off remain available for staff review.</span></label></div>
+        <div class="card table-wrap"><h2>Recent analysis requests</h2><table><thead><tr><th>Type</th><th>Ticket</th><th>Time (ms)</th><th>Result</th></tr></thead><tbody>
           ${stats.recentCalls.map((c) => `<tr class="no-hover"><td>${esc(c.kind)}</td><td>${c.ticketId ?? '–'}</td><td>${c.latencyMs}</td><td>${c.success ? 'yes' : esc(c.error || 'no')}</td></tr>`).join('') || '<tr class="no-hover"><td colspan="4" class="muted">None yet</td></tr>'}</tbody></table></div>`
-        : '<div class="card"><p class="muted">Admins also see AI health and the audit log here.</p></div>'}</div></div>`;
+        : '<div class="card"><p class="muted">Admins can also view service health and recent analysis activity here.</p></div>'}</div></div>`;
     document.getElementById('lab-form').addEventListener('submit', async (ev) => {
       ev.preventDefault();
       const out = document.getElementById('lab-result'); out.innerHTML = '<div class="skeleton"></div>';
@@ -522,10 +522,10 @@
     });
   }
 
-  // -------------------------------------------------------------------- profile
+  // Profile
   async function viewProfile(main) {
     const profile = await api('/auth/me');
-    main.innerHTML = `${pageIntro('My profile', 'Your profile identifies you when you raise or follow a ticket. The employee ID and user ID are stored with your account; your password is never returned by the profile API.')}
+    main.innerHTML = `${pageIntro('My profile', 'Review the account details linked to your support profile. Passwords are protected and are not displayed here.')}
       <div class="card profile-card"><dl>
         <div><dt>Full name</dt><dd>${esc(profile.fullName)}</dd></div>
         <div><dt>Employee ID</dt><dd>${esc(profile.employeeId || 'Not set for this demo account')}</dd></div>
@@ -539,7 +539,7 @@
       </div>`;
   }
 
-  // -------------------------------------------------------------------- start
+  // Start the app
   const saved = store.get('session');
   if (saved && saved.tokens && saved.user) { state.tokens = saved.tokens; state.user = saved.user; renderShell(); } else { renderLogin(); }
 })();
