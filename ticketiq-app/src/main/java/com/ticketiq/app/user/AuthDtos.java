@@ -1,0 +1,56 @@
+package com.ticketiq.app.user;
+
+import com.ticketiq.core.model.Role;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Pattern;
+import jakarta.validation.constraints.Size;
+
+/** Request and response shapes for sign-in and user management. */
+public final class AuthDtos {
+
+    private static final String STRONG_PASSWORD =
+            "^(?=.*[a-z])(?=.*[A-Z])(?=.*[0-9])(?=.*[^A-Za-z0-9\\s])[\\x21-\\x7E]{8,72}$";
+
+    private AuthDtos() {
+    }
+
+    public record LoginRequest(@NotBlank @Size(max = 100) String userId, @NotBlank String password) {
+    }
+
+    public record SignupRequest(
+            @NotBlank @Pattern(regexp = "\\d{1,30}", message = "must contain 1 to 30 digits") String employeeId,
+            @NotBlank @Size(max = 100) String fullName,
+            @NotBlank @Size(min = 3, max = 50)
+            @Pattern(regexp = "[A-Za-z0-9._-]+", message = "use letters, numbers, dots, underscores or hyphens")
+            String userId,
+            @NotBlank @Pattern(regexp = STRONG_PASSWORD,
+                    message = "must be 8 to 72 printable characters and include lowercase, uppercase, a number and a symbol")
+            String password) {
+    }
+
+    public record RefreshRequest(@NotBlank String refreshToken) {
+    }
+
+    public record CreateUserRequest(
+            @NotBlank @Size(min = 3, max = 50)
+            @Pattern(regexp = "[A-Za-z0-9._-]+", message = "use letters, numbers, dots, underscores or hyphens")
+            String userId,
+            @Pattern(regexp = "\\d{1,30}", message = "must contain 1 to 30 digits") String employeeId,
+            @NotBlank @Pattern(regexp = STRONG_PASSWORD,
+                    message = "must be 8 to 72 printable characters and include lowercase, uppercase, a number and a symbol")
+            String password,
+            @NotBlank @Size(max = 100) String fullName,
+            @NotNull Role role) {
+    }
+
+    public record UserResponse(Long id, String userId, String employeeId, String fullName, Role role) {
+        public static UserResponse from(User u) {
+            return new UserResponse(u.getId(), u.getUserId(), u.getEmployeeId(), u.getFullName(), u.getRole());
+        }
+    }
+
+    public record LoginResponse(String accessToken, String refreshToken, String tokenType,
+                                long expiresInSeconds, UserResponse user) {
+    }
+}

@@ -1,0 +1,71 @@
+### TicketIQ API walkthrough for the VS Code "REST Client" extension.
+### Click "Send Request" above each block, top to bottom. Start the app first.
+@base = http://localhost:8080
+
+### 1. Sign in as the agent (copy the accessToken into the variable below)
+POST {{base}}/api/auth/login
+Content-Type: application/json
+
+{ "userId": "agent@ticketiq.local", "password": "Agent@123" }
+
+###
+@token = PASTE_ACCESS_TOKEN_HERE
+
+### 2. Create a ticket (the AI triages it in the background)
+POST {{base}}/api/tickets
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{ "title": "Reset email is not arriving", "description": "I pressed Forgot password but the email never arrives. Call me on 9876543210." }
+
+### 3. List tickets (filters: status, category, priority, q, page, size)
+GET {{base}}/api/tickets?status=TRIAGED&page=0&size=10
+Authorization: Bearer {{token}}
+
+### 4. One ticket, including the AI block (agents and admins only)
+GET {{base}}/api/tickets/16
+Authorization: Bearer {{token}}
+
+### 5. Similar past tickets
+GET {{base}}/api/tickets/16/similar
+Authorization: Bearer {{token}}
+
+### 6. Suggested reply with sources
+GET {{base}}/api/tickets/16/suggested-reply
+Authorization: Bearer {{token}}
+
+### 7. Manual triage (always overrides the AI)
+PATCH {{base}}/api/tickets/16/triage
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{ "category": "ACCESS", "priority": "HIGH" }
+
+### 8. Tell us whether the AI draft helped
+POST {{base}}/api/tickets/16/ai-feedback
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{ "accepted": true, "edited": false }
+
+### 9. Comment (set internal true for an agent-only note)
+POST {{base}}/api/tickets/16/comments
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{ "body": "We have resent the link.", "internal": false }
+
+### 10. Resolve (needs a resolution; this also teaches the AI)
+PATCH {{base}}/api/tickets/16/status
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{ "status": "RESOLVED", "resolution": "Mail gateway was filtering the reset email. Allowed the sender and resent." }
+
+### 11. Ask the AI to look at a ticket again
+POST {{base}}/api/tickets/16/retriage
+Authorization: Bearer {{token}}
+
+### 12. Insights
+GET {{base}}/api/stats
+Authorization: Bearer {{token}}

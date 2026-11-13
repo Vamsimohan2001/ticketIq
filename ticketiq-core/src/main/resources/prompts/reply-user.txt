@@ -1,0 +1,10 @@
+TASK:REPLY
+Draft a reply to the ticket using only the context.
+
+<<<CONTEXT
+{{context}}
+CONTEXT>>>
+
+<<<TICKET
+{{ticket}}
+TICKET>>>

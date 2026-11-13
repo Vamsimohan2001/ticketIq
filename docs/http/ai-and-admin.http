@@ -1,0 +1,59 @@
+### AI tools and admin endpoints. Sign in as admin@ticketiq.local / Admin@123 first.
+@base = http://localhost:8080
+
+###
+POST {{base}}/api/auth/login
+Content-Type: application/json
+
+{ "userId": "admin@ticketiq.local", "password": "Admin@123" }
+
+###
+@token = PASTE_ADMIN_ACCESS_TOKEN_HERE
+
+### Dry run: the whole AI pipeline on text you supply, nothing saved
+POST {{base}}/api/ai/dry-run/triage
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{ "title": "Double payment", "description": "I was charged twice. Card 4111 1111 1111 1111." }
+
+### AI health, metrics and audit log (admin)
+GET {{base}}/api/ai/stats
+Authorization: Bearer {{token}}
+
+### Switch the AI off (tickets keep working) and back on
+PUT {{base}}/api/ai/switch
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{ "enabled": false }
+
+### Knowledge base
+GET {{base}}/api/kb
+Authorization: Bearer {{token}}
+
+###
+POST {{base}}/api/kb
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{ "title": "Changing your display language", "content": "Open Profile, then Preferences, and choose a language. The change applies at once.", "tags": "howto" }
+
+### Create a user
+POST {{base}}/api/users
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{ "userId": "new.agent", "employeeId": "123456", "password": "Str0ngPassw0rd!", "fullName": "New Agent", "role": "AGENT" }
+
+### Public info and health (no token)
+GET {{base}}/api/meta
+
+###
+GET {{base}}/actuator/health
+
+### Public signup creates a USER profile (then sign in with the chosen user ID)
+POST {{base}}/api/auth/signup
+Content-Type: application/json
+
+{ "employeeId": "11223344", "fullName": "New User", "userId": "new.user.demo", "password": "SecureDemo9!" }

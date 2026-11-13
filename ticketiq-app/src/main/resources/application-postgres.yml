@@ -1,0 +1,6 @@
+# Activate with SPRING_PROFILES_ACTIVE=postgres and start a PostgreSQL (docker-compose.yml provides one).
+spring:
+  datasource:
+    url: ${TICKETIQ_DB_URL:jdbc:postgresql://localhost:5432/ticketiq}
+    username: ${TICKETIQ_DB_USER:ticketiq}
+    password: ${TICKETIQ_DB_PASSWORD:ticketiq}

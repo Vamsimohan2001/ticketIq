@@ -1,0 +1,6 @@
+TASK:TRIAGE
+Classify the ticket below.
+
+<<<TICKET
+{{ticket}}
+TICKET>>>

@@ -1,0 +1,54 @@
+# TicketIQ configuration. Every value can be overridden with an environment variable (see .env.example).
+server:
+  port: ${PORT:8080}
+
+spring:
+  application:
+    name: ticketiq
+  datasource:
+    url: ${TICKETIQ_DB_URL:jdbc:h2:file:./data/ticketiq;DB_CLOSE_ON_EXIT=FALSE}
+    username: ${TICKETIQ_DB_USER:sa}
+    password: ${TICKETIQ_DB_PASSWORD:}
+  jpa:
+    hibernate:
+      ddl-auto: update          # the schema follows the entities; use Flyway migrations for production
+    open-in-view: false
+  jackson:
+    default-property-inclusion: non_null
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics
+  endpoint:
+    health:
+      show-details: never
+
+ticketiq:
+  jwt:
+    # Dev default only. Set JWT_SECRET (32+ characters) for anything shared.
+    secret: ${JWT_SECRET:dev-only-secret-change-me-before-sharing-123456}
+    access-minutes: 30
+    refresh-days: 7
+  seed:
+    enabled: ${TICKETIQ_SEED:true}
+  ai:
+    enabled: ${AI_ENABLED:true}
+    provider: ${AI_PROVIDER:mock}            # mock | gemini | ollama
+    dimensions: ${EMBEDDING_DIMENSIONS:768}
+    confidence-threshold: ${AI_CONFIDENCE_THRESHOLD:0.6}
+    similarity-threshold: ${AI_SIMILARITY_THRESHOLD:-1}        # -1 = provider default
+    reply-context-threshold: ${AI_REPLY_CONTEXT_THRESHOLD:-1}  # -1 = provider default
+    timeout-seconds: ${AI_TIMEOUT_SECONDS:15}
+    max-retries: ${AI_MAX_RETRIES:2}
+    rate-limit-per-minute: ${AI_RATE_LIMIT_PER_MIN:30}
+    cache-ttl-seconds: ${AI_CACHE_TTL_SECONDS:3600}
+    sweep-ms: ${AI_SWEEP_MS:30000}
+    gemini-api-key: ${GEMINI_API_KEY:}
+    gemini-base-url: ${GEMINI_BASE_URL:https://generativelanguage.googleapis.com}
+    gemini-chat-model: ${GEMINI_CHAT_MODEL:gemini-2.5-flash}
+    gemini-embedding-model: ${GEMINI_EMBEDDING_MODEL:gemini-embedding-001}
+    ollama-base-url: ${OLLAMA_BASE_URL:http://localhost:11434}
+    ollama-chat-model: ${OLLAMA_CHAT_MODEL:llama3.2}
+    ollama-embedding-model: ${OLLAMA_EMBEDDING_MODEL:nomic-embed-text}

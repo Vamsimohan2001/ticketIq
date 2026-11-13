@@ -1,0 +1,10 @@
+{
+  "java.configuration.updateBuildConfiguration": "automatic",
+  "java.compile.nullAnalysis.mode": "disabled",
+  "java.jdt.ls.java.home": "",
+  "java.import.maven.enabled": true,
+  "editor.formatOnSave": true,
+  "files.exclude": { "**/target": true, "**/.classpath": true, "**/.project": true, "**/.settings": true },
+  "search.exclude": { "**/target": true, "**/data": true },
+  "rest-client.environmentVariables": { "$shared": {}, "local": { "base": "http://localhost:8080" } }
+}
