@@ -7,21 +7,22 @@ All AI code lives in `ticketiq-core` and is reached from the Spring app only thr
 
 ```
 ticket text
-  S1 rate limit ─▶ S2 redact PII ─▶ S3 triage (cached) ─▶ S4 embed + find similar ─▶ S5 RAG reply ─▶ S6 guardrails ─▶ result
+  redact PII ─▶ rate limit ─▶ triage (cached) ─▶ embed + find similar ─▶ RAG reply ─▶ guardrails ─▶ result
                                           │                      │                        │
                                           └──────────── every model call goes through AiGateway ──────────┘
                                                       timeout · retry · circuit breaker · audit · metrics
 ```
 
 Each step fails on its own. A broken model never throws out of the pipeline; it produces a result that says
-"needs a human".
+"needs a human". The implementation redacts text before checking the pipeline rate limit; no model call is made when
+the limit has been reached.
 
 ## Integration points
 
 | # | Integration point | What it does | Classes |
 |---|---|---|---|
-| IP-1 | Event contract | `TicketCreated`/`TicketTriaged`/`TicketResolved`/`KbChanged` decouple tickets from AI | `events/TicketEvents`, `ai/AiTriageHandler`, `ticket/TicketService` |
-| IP-2 | Privacy gate | Emails, phones (incl. +91 and 10-digit), PAN, Aadhaar-like, Luhn-valid cards become `[EMAIL]` etc. before any model, embedding or stored text | `redaction/PiiRedactor`, used first in `AiPipeline` and `AiRuntime.index*` |
+| IP-1 | Event contract | `TicketCreated`/`TicketResolved`/`KbChanged` decouple ticket lifecycle work from AI; triage results are applied directly by the handler, not published as a `TicketTriaged` event | `events/TicketEvents`, `ai/AiTriageHandler`, `ticket/TicketService` |
+| IP-2 | Privacy gate | Emails, phones (incl. +91 and 10-digit), PAN, Aadhaar-like, Luhn-valid cards become `[EMAIL]` etc. before reaching a model or embedding; indexed text is redacted too | `redaction/PiiRedactor`, used first in `AiPipeline` and `AiRuntime.index*` |
 | IP-3 | Structured output | Model must return one JSON object; parsed and validated into a `TriageResult` record; one repair attempt, then fall back to a human | `ai/TriageService`, `ai/TriageResult`, `resources/prompts/triage-*.txt` |
 | IP-4 | Embeddings | Redacted text becomes a unit vector; cosine search finds earlier tickets above the similarity threshold | `llm/*EmbeddingModel`, `ai/SimilarityService`, `ai/InMemoryVectorStore` |
 | IP-5 | Retrieval | Top 3 knowledge-base articles and top 3 resolved tickets that clear the relevance threshold | `ai/ReplyDraftService` |

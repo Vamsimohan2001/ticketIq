@@ -1,3 +1,13 @@
+---
+title: TicketIQ
+emoji: 🎫
+colorFrom: blue
+colorTo: indigo
+sdk: docker
+app_port: 7860
+pinned: false
+---
+
 # TicketIQ
 
 TicketIQ is an IT help desk built with **Java 21 and Spring Boot**. Employees can report issues and track their active
@@ -8,6 +18,19 @@ reply based on the knowledge base. These suggestions help staff investigate; sup
 decisions and communication. If the analysis service is unavailable, users can still submit tickets.
 
 ![AI panel on a ticket](docs/screenshots/ticket-ai-panel.png)
+
+## Free hosted demo (Hugging Face Spaces)
+
+This repository is configured as a Docker Space. To publish a free public demo:
+
+1. On [Hugging Face Spaces](https://huggingface.co/spaces), create a new **Public** Space and select **Docker**.
+2. Push this repository to the Space's Git remote, or connect the repository when creating the Space.
+3. Wait for the Space to build. Its public URL will be `https://<your-username>-<space-name>.hf.space`.
+
+The Space uses the mock AI provider, needs no API key or external database, and seeds demo users, articles, and tickets
+on startup. The hosted database is in memory, so changes disappear when the Space restarts. Free Spaces may sleep while
+idle and take a little time to wake up. This is a shared demo: do not enter real personal or confidential information.
+The seeded demo accounts below can be used to explore the different roles.
 
 ## Quick start
 
@@ -24,7 +47,7 @@ Otherwise it opens the URL using the operating system's default browser handler.
 **In VS Code:** open this folder, accept the recommended extensions, press **F5** (`TicketIQ (Spring Boot)`),
 then browse to http://localhost:8080. Tasks are under *Terminal > Run Task* (Setup, Build and Test, Run, Evaluate AI).
 
-### Demo accounts (for local use only)
+### Demo accounts (for local and hosted demos only)
 
 | Role | User ID | Password | Can do |
 |---|---|---|---|
@@ -35,6 +58,7 @@ then browse to http://localhost:8080. Tasks are under *Terminal > Run Task* (Set
 New users can select **Create an account** on the sign-in page. Signing up saves an employee ID, name, user ID, and a
 BCrypt-protected password. Passwords must be at least 8 characters and contain a lowercase letter, uppercase letter,
 number, and symbol. Self-registered accounts receive the USER role.
+Do not use the seeded accounts or demo configuration for a production deployment.
 
 ### Roles and access
 

@@ -1,0 +1,7 @@
+.git
+.env
+.vscode
+**/target
+**/data
+*.log
+*.mv.db

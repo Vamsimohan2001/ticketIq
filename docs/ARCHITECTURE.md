@@ -1,8 +1,8 @@
 # Architecture
 
-TicketIQ is a **modular monolith**: one Spring Boot process, with the AI kept in a separate framework-free module and
-reached only through events. That keeps the legacy app untouched, makes the AI easy to test, and lets it fail without
-hurting tickets.
+TicketIQ is a **modular monolith**: one Spring Boot process, with the AI kept in a separate framework-free module.
+Ticket lifecycle work reaches the AI through events; staff AI tools can call the same runtime directly. That keeps the
+ticket workflow decoupled, makes the AI easy to test, and lets it fail without hurting ticket creation.
 
 ```
                     ┌──────────────────────── ticketiq-app (Spring Boot) ───────────────────────┐
@@ -12,7 +12,7 @@ hurting tickets.
                     │      │   TicketCreated ──▶ AiTriageHandler ──▶ ┌── ticketiq-core ───────┐ │
                     │      │                      (async thread)     │ AiPipeline             │ │
                     │      │                          │              │  redact → triage       │ │
-                    │      │   TicketTriaged ◀── applyAiTriage ◀─────│  embed → similar       │ │
+                    │      │   applyAiTriage ◀───────────────────────│  embed → similar       │ │
                     │      │        │                                │  RAG reply → guardrail │ │
                     │      │        ▼                                │ AiGateway (retry,      │ │
                     │      │                                         │  audit, metrics)       │ │
