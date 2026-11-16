@@ -10,167 +10,88 @@ pinned: false
 
 # TicketIQ
 
-TicketIQ is an IT help desk built with **Java 21 and Spring Boot**. Employees can report issues and track their active
-tickets. Support agents can review and manage incidents, including resolved cases.
+I built TicketIQ as an IT help desk where employees can report problems and support teams can manage them through
+resolution. I wanted AI to help with the repetitive first pass, while leaving decisions and communication to the people
+handling each ticket.
 
-TicketIQ can also analyze a ticket and suggest a category, priority, summary, support team, similar incidents, and a
-reply based on the knowledge base. These suggestions help staff investigate; support staff remain responsible for
-decisions and communication. If the analysis service is unavailable, users can still submit tickets.
+![TicketIQ ticket analysis panel](docs/screenshots/ticket-ai-panel.png)
 
-![AI panel on a ticket](docs/screenshots/ticket-ai-panel.png)
+## What you can do
 
-## Hugging Face Spaces
+I organized the portal around three roles. Employees can create tickets, follow their status, and reply to support.
+Agents can review the queue, assign and triage tickets, use suggested replies, and resolve incidents. Admins can also
+manage users and knowledge articles, and control the AI settings.
 
-### Free interactive preview
+I added AI to handle some of the first-pass work. For a ticket, it can suggest a category, priority, summary, and
+support team, then look for related incidents and knowledge articles to help draft a reply. Staff review the suggestions
+before using them. If the AI service is unavailable, the ticket can still be submitted. Ticket text is checked for
+personal information before it is sent to an external model.
 
-Explore the [TicketIQ static demo](https://vamsik2002-ticetiq.static.hf.space). Its source is in
-[hf-static-demo/](./hf-static-demo). It includes sample tickets, simulated AI triage and reply drafts, role previews,
-Insights, a knowledge base, and AI Lab controls. It is a browser-only simulation: it has no Java backend, real
-authentication, database, or live AI service. Changes reset on reload. Do not enter personal or confidential data.
+## Run locally
 
-### Full Java application
+You need JDK 21 and Maven 3.9 or later. The default setup uses H2 and the built-in mock AI provider, so no database
+server or API key is required.
 
-The full app is configured as a Docker Space in [TicketIq](https://huggingface.co/spaces/vamsiK2002/TicketIq), but
-Hugging Face currently reports that this account has no `cpu-basic` compute quota, so that Space is paused. Running the
-Spring Boot backend on Hugging Face requires compatible CPU compute; the free static preview is not a substitute for
-the full backend.
+In Windows PowerShell:
 
-## Quick start
+```powershell
+.\scripts\setup.ps1
+.\scripts\run.ps1
+```
 
-You need **JDK 21** and **Maven 3.9+**. Nothing else: no Docker, no database, no API key.
+On macOS or Linux:
 
 ```bash
-bash scripts/setup.sh     # checks Java and Maven, creates .env       (Windows: scripts\setup.ps1)
-bash scripts/run.sh       # builds, starts the app, opens the browser  (Windows: scripts\run.ps1)
+bash scripts/setup.sh
+bash scripts/run.sh
 ```
 
-The run script opens **http://localhost:8080** in a new browser window when a supported browser is installed.
-Otherwise it opens the URL using the operating system's default browser handler.
+Open [http://localhost:8080](http://localhost:8080). The setup script creates a local `.env` file. For PostgreSQL,
+start the database with `docker compose up -d` and set `SPRING_PROFILES_ACTIVE=postgres` in `.env`.
 
-**In VS Code:** open this folder, accept the recommended extensions, press **F5** (`TicketIQ (Spring Boot)`),
-then browse to http://localhost:8080. Tasks are under *Terminal > Run Task* (Setup, Build and Test, Run, Evaluate AI).
+### Demo accounts
 
-### Demo accounts (for local and hosted demos only)
+The seeded accounts are for local and demo use only:
 
-| Role | User ID | Password | Can do |
-|---|---|---|---|
-| Admin | admin@ticketiq.local | Admin@123 | everything, including users, knowledge base, AI health |
-| Agent | agent@ticketiq.local | Agent@123 | triage, reply, resolve, see AI suggestions |
-| User | user@ticketiq.local | User@123 | raise and follow their own tickets |
+- Admin: `admin@ticketiq.local` / `Admin@123`
+- Agent: `agent@ticketiq.local` / `Agent@123`
+- User: `user@ticketiq.local` / `User@123`
 
-New users can select **Create an account** on the sign-in page. Signing up saves an employee ID, name, user ID, and a
-BCrypt-protected password. Passwords must be at least 8 characters and contain a lowercase letter, uppercase letter,
-number, and symbol. Self-registered accounts receive the USER role.
-Do not use the seeded accounts or demo configuration for a production deployment.
+You can also create an account from the sign-in page. New accounts get the USER role.
 
-### Roles and access
+## AI providers
 
-| Role | Main purpose | Access |
-|---|---|---|
-| **USER** | Report an incident | Create tickets, follow their own active tickets, reply on those tickets, and view their profile. Cannot browse other users' tickets or any resolved/closed incident history. |
-| **AGENT** | Investigate and assign incidents | See current and historical incidents, review AI matches and drafts, assign and triage tickets, communicate, and resolve them. Can read the knowledge base and Insights, but cannot create users, edit knowledge articles, or change AI settings. |
-| **ADMIN** | Configure and oversee the service | All agent work, plus create users, manage knowledge articles, switch AI on/off, and inspect AI health and usage. |
+TicketIQ uses the `mock` provider by default. It runs locally and needs no key. To try another provider, set
+`AI_PROVIDER` in `.env`:
 
-Roles are enforced by the API, not just by hiding navigation options. ADMIN is the highest role; AGENT has support-work access, and USER has requester access only.
+- `gemini` uses `GEMINI_API_KEY` and the configured Gemini chat and embedding models.
+- `ollama` uses a local Ollama server; pull `llama3.2` and `nomic-embed-text` before starting the app.
 
-### Quick walkthrough
+The vector index is rebuilt from the database when the app starts. The evaluation report in
+[docs/evaluation-report.md](docs/evaluation-report.md) uses the mock provider, so it is not a benchmark of Gemini or
+Ollama.
 
-1. Sign in as **Agent**, choose **New ticket**, click the sample **Reset email missing**, submit.
-2. Read the ticket page's guide, then watch the ticket fill in: summary, confidence, a **similar past incident**, and a **suggested reply with sources**.
-3. Click **Use as reply**, review and edit the draft, then send it. Agents can also change the suggested category or priority.
-4. See the suggested support team on the ticket, resolve it (a resolution is required), and open **Insights** to compare AI vs human triage.
-5. Sign in as **Admin**, open **AI Lab**, switch the AI **off**, create a ticket (it stays NEW), switch the AI **on**, and
-   watch the ticket get triaged. Tickets never depend on the AI.
+## Try the free preview
 
-## Features
+The [TicketIQ static demo](https://vamsik2002-ticetiq.static.hf.space) is a quick way to explore the interface. It has
+sample tickets, role previews, Insights, and simulated AI suggestions. It is not connected to the Java app: there is no
+real sign-in, backend, database, or live AI service, and changes reset when the page reloads. Please do not enter
+personal or confidential information.
 
-| Ticket management | AI-assisted support |
-|---|---|
-| Sign-in and USER, AGENT, and ADMIN roles | Suggested category, priority, and summary |
-| Create, filter, assign, comment on, and resolve tickets | Similarity search across resolved incidents |
-| Manual triage and status updates | Reply drafts based on knowledge articles and past resolutions (RAG) |
-| Knowledge articles and ticket statistics | Personal information is redacted before model processing |
-| Role-based access to ticket history | Low-confidence results are flagged for staff review |
-| | Resolved tickets and knowledge articles are added to the search index |
-| | Model-call audit records, metrics, retries, circuit breaker, and caching |
+The [full Java app's Hugging Face Space](https://huggingface.co/spaces/vamsiK2002/TicketIq) is configured to run as a
+Docker Space. Hugging Face reports that this account has no `cpu-basic` quota, so the full app is currently paused.
 
-## Project layout
+## Tests and project code
 
-```
-ticketiq/
-├── pom.xml                      parent POM (Spring Boot 3.5, Java 21)
-├── ticketiq-core/               plain Java module for triage, search, and AI integrations
-│   └── src/main/java/com/ticketiq/core/
-│       ├── ai/                  pipeline, triage, similarity, RAG reply, guardrails, resilient executor
-│       ├── llm/                 mock, Gemini and Ollama model clients
-│       ├── redaction/           PiiRedactor
-│       ├── security/            HS256 JWT support
-│       ├── json/  model/  seed/  eval/
-│       └── resources/           prompts, seed data, 40-ticket evaluation set
-├── ticketiq-app/                the Spring Boot application
-│   └── src/main/java/com/ticketiq/app/
-│       ├── ticket/ user/ kb/    entities, repositories, services, controllers
-│       ├── ai/                  the integration points (event handlers, sweeper, indexer, audit, AI endpoints)
-│       ├── stats/ config/ security/ events/ common/
-│       └── resources/           application.yml, static/ (the browser UI)
-├── docs/                        ARCHITECTURE, AI-INTEGRATION, API, DECISIONS, BUILD_REPORT, evaluation report, .http files
-├── scripts/                     setup, run, test, evaluate (bash and PowerShell)
-└── .vscode/                     extensions, settings, tasks, launch configs
-```
+Run the test suite with `.\scripts\test.ps1` in PowerShell, or `bash scripts/test.sh` on macOS and Linux. It covers the
+AI pipeline, security, validation, and ticket workflows without needing an API key.
 
-## Switching the AI provider
+The project has two Java modules. `ticketiq-app` contains the Spring Boot API, security, persistence, and browser UI;
+`ticketiq-core` contains the ticket analysis, model clients, retrieval, and guardrails. The browser-only preview is in
+`hf-static-demo/`. More detail is in [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md),
+[docs/API.md](docs/API.md), and [docs/AI-INTEGRATION.md](docs/AI-INTEGRATION.md).
 
-The same pipeline runs on every provider. Edit `.env` and restart.
+## Before using it beyond a demo
 
-| Provider | Set | Notes |
-|---|---|---|
-| **mock** (default) | `AI_PROVIDER=mock` | Local keyword rules and hashed embeddings. Deterministic and requires no API key. |
-| **Gemini** | `AI_PROVIDER=gemini` and `GEMINI_API_KEY=...` | Configure the chat and embedding models with `GEMINI_CHAT_MODEL` and `GEMINI_EMBEDDING_MODEL`. |
-| **Ollama** | `AI_PROVIDER=ollama` | First run `ollama pull llama3.2` and `ollama pull nomic-embed-text`. |
-
-You do not need to clear anything when you change provider: the vector index lives in memory and is rebuilt
-from the database at every start.
-
-To evaluate a provider, run `AI_PROVIDER=gemini GEMINI_API_KEY=... bash scripts/evaluate.sh`. This updates
-`docs/evaluation-report.md`. The checked-in report uses the **mock** provider; its results describe the local rules
-and are not a measure of Gemini or Ollama performance.
-
-## Tests
-
-```bash
-bash scripts/test.sh        # mvn verify: core unit tests + Spring integration tests, no API key needed
-```
-
-The suite covers PII redaction, JSON handling, JWT tampering and expiry, retries and circuit breaking, triage parsing,
-prompt-injection handling, guardrails, vector search, the full AI pipeline, Gemini and Ollama clients against a local test
-server, security rules, validation, and the ticket flow through MockMvc. See `docs/BUILD_REPORT.md` for the recorded
-validation details.
-
-## Optional: PostgreSQL
-
-`docker compose up -d`, then set `SPRING_PROFILES_ACTIVE=postgres` in `.env` and start the app.
-
-## Troubleshooting
-
-| Problem | Fix |
-|---|---|
-| `release version 21 not supported` | Your JDK is older than 21. Install JDK 21 and make `JAVA_HOME` point at it. |
-| Port 8080 busy | Set `PORT=8090` in `.env`. |
-| `JWT secret must be at least 32 characters` | Your `JWT_SECRET` is too short. |
-| `GEMINI_API_KEY is required` | You chose `AI_PROVIDER=gemini` without a key. Use `mock` or add the key. |
-| Tickets stay NEW | The AI is switched off (AI Lab) or still starting. The sweeper triages them within about 30 seconds of it returning. |
-| Fresh start | Stop the app and delete the `data/` folder. Demo data is re-created. |
-| Slow first build | Maven is downloading dependencies once. |
-
-## How ticket analysis works
-
-After a ticket is saved, TicketIQ analyzes its title and description. Retrieval-augmented generation (RAG) searches
-knowledge articles and resolved tickets for relevant information, then prepares suggestions for the support team.
-The suggested category maps to a team such as Identity and Access, Billing and Payments, Application Engineering,
-Product Support, Integrations, Product, or General Support. Personal information is redacted before text is sent for
-model processing. Staff review the suggestions before taking action.
-
-## Production notes
-
-Before using this beyond a local or demonstration environment, set a strong `JWT_SECRET`, replace the demo passwords,
-use database migrations instead of `ddl-auto: update`, and consider a persistent vector store such as pgvector.
+Replace the seeded passwords and default JWT secret, use database migrations instead of `ddl-auto: update`, and choose
+a persistent database and vector store. The demo setup is not intended for production.
