@@ -19,18 +19,21 @@ decisions and communication. If the analysis service is unavailable, users can s
 
 ![AI panel on a ticket](docs/screenshots/ticket-ai-panel.png)
 
-## Free hosted demo (Hugging Face Spaces)
+## Hugging Face Spaces
 
-This repository is configured as a Docker Space. To publish a free public demo:
+### Free interactive preview
 
-1. On [Hugging Face Spaces](https://huggingface.co/spaces), create a new **Public** Space and select **Docker**.
-2. Push this repository to the Space's Git remote, or connect the repository when creating the Space.
-3. Wait for the Space to build. Its public URL will be `https://<your-username>-<space-name>.hf.space`.
+Explore the [TicketIQ static demo](https://vamsik2002-ticetiq.static.hf.space). Its source is in
+[hf-static-demo/](./hf-static-demo). It includes sample tickets, simulated AI triage and reply drafts, role previews,
+Insights, a knowledge base, and AI Lab controls. It is a browser-only simulation: it has no Java backend, real
+authentication, database, or live AI service. Changes reset on reload. Do not enter personal or confidential data.
 
-The Space uses the mock AI provider, needs no API key or external database, and seeds demo users, articles, and tickets
-on startup. The hosted database is in memory, so changes disappear when the Space restarts. Free Spaces may sleep while
-idle and take a little time to wake up. This is a shared demo: do not enter real personal or confidential information.
-The seeded demo accounts below can be used to explore the different roles.
+### Full Java application
+
+The full app is configured as a Docker Space in [TicketIq](https://huggingface.co/spaces/vamsiK2002/TicketIq), but
+Hugging Face currently reports that this account has no `cpu-basic` compute quota, so that Space is paused. Running the
+Spring Boot backend on Hugging Face requires compatible CPU compute; the free static preview is not a substitute for
+the full backend.
 
 ## Quick start
 
