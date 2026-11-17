@@ -13,6 +13,12 @@ import com.ticketiq.app.ticket.TicketDtos.SuggestedReplyView;
 import com.ticketiq.app.ticket.TicketDtos.TicketDetail;
 import com.ticketiq.app.ticket.TicketDtos.TicketSummary;
 import com.ticketiq.app.ticket.TicketDtos.TriageRequest;
+import com.ticketiq.app.ticket.TicketDtos.UpdateTicketRequest;
+import com.ticketiq.app.ticket.TicketDtos.TimelineRequest;
+import com.ticketiq.app.ticket.IncidentRequestService;
+import com.ticketiq.app.ticket.IncidentRequestService.RequestInput;
+import com.ticketiq.app.ticket.IncidentRequestService.RequestView;
+import com.ticketiq.app.ticket.IncidentRequestService.UserDecision;
 import com.ticketiq.core.model.Category;
 import com.ticketiq.core.model.Priority;
 import jakarta.validation.Valid;
@@ -34,9 +40,11 @@ import org.springframework.web.bind.annotation.RestController;
 public class TicketController {
 
     private final TicketService service;
+    private final IncidentRequestService incidentRequests;
 
-    public TicketController(TicketService service) {
+    public TicketController(TicketService service, IncidentRequestService incidentRequests) {
         this.service = service;
+        this.incidentRequests = incidentRequests;
     }
 
     @PostMapping
@@ -60,6 +68,11 @@ public class TicketController {
         return service.get(CurrentUser.get(), id);
     }
 
+    @PatchMapping("/{id}")
+    public TicketDetail update(@PathVariable Long id, @Valid @RequestBody UpdateTicketRequest request) {
+        return service.updateDetails(CurrentUser.get(), id, request);
+    }
+
     @PatchMapping("/{id}/triage")
     @PreAuthorize("hasAnyRole('AGENT','ADMIN')")
     public TicketDetail triage(@PathVariable Long id, @Valid @RequestBody TriageRequest request) {
@@ -76,6 +89,12 @@ public class TicketController {
     @PreAuthorize("hasAnyRole('AGENT','ADMIN')")
     public TicketDetail status(@PathVariable Long id, @Valid @RequestBody StatusRequest request) {
         return service.updateStatus(CurrentUser.get(), id, request);
+    }
+
+    @PatchMapping("/{id}/timeline")
+    @PreAuthorize("hasRole('ADMIN')")
+    public TicketDetail timeline(@PathVariable Long id, @Valid @RequestBody TimelineRequest request) {
+        return service.updateTimeline(CurrentUser.get(), id, request);
     }
 
     @PostMapping("/{id}/comments")
@@ -113,5 +132,22 @@ public class TicketController {
     @PreAuthorize("hasAnyRole('AGENT','ADMIN')")
     public void retriage(@PathVariable Long id) {
         service.requestRetriage(id);
+    }
+
+    @PostMapping("/{id}/requests")
+    @ResponseStatus(HttpStatus.CREATED)
+    public RequestView requestChange(@PathVariable Long id, @Valid @RequestBody RequestInput request) {
+        return incidentRequests.create(CurrentUser.get(), id, request);
+    }
+
+    @GetMapping("/{id}/requests")
+    public List<RequestView> userRequests(@PathVariable Long id) {
+        return incidentRequests.waitingUser(CurrentUser.get(), id);
+    }
+
+    @PostMapping("/{id}/requests/{requestId}/user-decision")
+    public RequestView userDecision(@PathVariable Long id, @PathVariable Long requestId,
+                                    @Valid @RequestBody UserDecision decision) {
+        return incidentRequests.userDecision(CurrentUser.get(), id, requestId, decision);
     }
 }

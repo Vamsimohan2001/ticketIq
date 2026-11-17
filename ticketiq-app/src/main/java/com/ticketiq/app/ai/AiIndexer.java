@@ -59,7 +59,7 @@ public class AiIndexer {
             }
             try {
                 ai.indexResolvedTicket(String.valueOf(t.getId()), t.getTitle(), t.getDescription(),
-                        t.getResolution(), t.getCategory());
+                        retrievalText(t), t.getCategory());
                 resolved++;
             } catch (RuntimeException e) {
                 log.warn("Could not index ticket {}: {}", t.getId(), e.getMessage());
@@ -75,7 +75,7 @@ public class AiIndexer {
         tickets.findById(event.ticketId()).ifPresent(t -> {
             try {
                 ai.indexResolvedTicket(String.valueOf(t.getId()), t.getTitle(), t.getDescription(),
-                        t.getResolution(), t.getCategory());
+                        retrievalText(t), t.getCategory());
                 log.info("Learned from resolved ticket {}", t.getId());
             } catch (RuntimeException e) {
                 log.warn("Could not learn from ticket {}: {}", t.getId(), e.getMessage());
@@ -99,5 +99,13 @@ public class AiIndexer {
                 log.warn("Could not index article {}: {}", id, e.getMessage());
             }
         });
+    }
+
+    private static String retrievalText(Ticket ticket) {
+        return "Resolution: " + ticket.getResolution()
+                + "\nHandling team: " + (ticket.getSupportTeam() == null
+                ? com.ticketiq.app.ticket.TicketTeams.forCategory(ticket.getCategory()) : ticket.getSupportTeam())
+                + "\nAgent handling: " + (ticket.getHandlingNotes() == null ? "" : ticket.getHandlingNotes())
+                + "\nSafe self-service: " + (ticket.getSelfService() == null ? "" : ticket.getSelfService());
     }
 }

@@ -16,7 +16,9 @@ class EvaluationAndSeedTest {
     @Test
     void seedDataHasTheExpectedShape() {
         assertEquals(10, SeedData.kbArticles().size());
-        assertEquals(15, SeedData.resolvedTickets().size());
+        assertEquals(60, SeedData.resolvedTickets().size());
+        assertTrue(SeedData.resolvedTickets().stream().allMatch(t -> t.team() != null
+                && t.handling() != null && t.selfService() != null && t.resolutionDays() >= 1));
         List<SeedData.EvalTicket> eval = SeedData.evalTickets();
         assertEquals(40, eval.size());
         assertEquals(8, eval.stream().filter(t -> t.duplicateOf() != null).count());

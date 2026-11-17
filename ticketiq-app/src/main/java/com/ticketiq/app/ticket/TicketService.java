@@ -1,6 +1,7 @@
 package com.ticketiq.app.ticket;
 
 import com.ticketiq.app.common.BadRequestException;
+import com.ticketiq.app.common.ForbiddenException;
 import com.ticketiq.app.common.NotFoundException;
 import com.ticketiq.app.events.TicketEvents.TicketCreated;
 import com.ticketiq.app.events.TicketEvents.TicketResolved;
@@ -16,6 +17,8 @@ import com.ticketiq.app.ticket.TicketDtos.SuggestedReplyView;
 import com.ticketiq.app.ticket.TicketDtos.TicketDetail;
 import com.ticketiq.app.ticket.TicketDtos.TicketSummary;
 import com.ticketiq.app.ticket.TicketDtos.TriageRequest;
+import com.ticketiq.app.ticket.TicketDtos.UpdateTicketRequest;
+import com.ticketiq.app.ticket.TicketDtos.TimelineRequest;
 import com.ticketiq.app.user.User;
 import com.ticketiq.app.user.UserRepository;
 import com.ticketiq.core.ai.PipelineResult;
@@ -80,9 +83,8 @@ public class TicketService {
                 .and(TicketSpecs.category(category))
                 .and(TicketSpecs.priority(priority))
                 .and(TicketSpecs.titleContains(text))
-                // Users can follow only their own active incidents; staff can browse history.
-                .and(caller.isStaff() ? null : TicketSpecs.requester(caller.id()))
-                .and(caller.isStaff() ? null : TicketSpecs.unfinished());
+                // Users can follow their own incidents through closure; staff can browse history.
+                .and(caller.isStaff() ? null : TicketSpecs.requester(caller.id()));
         Page<Ticket> result = tickets.findAll(spec,
                 PageRequest.of(Math.max(page, 0), safeSize, Sort.by(Sort.Direction.DESC, "createdAt")));
         List<TicketSummary> items = result.getContent().stream()
@@ -94,6 +96,23 @@ public class TicketService {
     @Transactional(readOnly = true)
     public TicketDetail get(AuthUser caller, Long id) {
         return TicketDetail.from(visibleTicket(caller, id), caller);
+    }
+
+    @Transactional
+    public TicketDetail updateDetails(AuthUser caller, Long id, UpdateTicketRequest request) {
+        Ticket ticket = visibleTicket(caller, id);
+        if (ticket.getStatus().isFinished()) {
+            throw new BadRequestException("Closed incidents cannot be edited");
+        }
+        ticket.updateDetails(request.title(), request.description());
+        ticket.clearAiSuggestions();
+        if (ticket.getStatus().isOpenForTriage()) {
+            ticket.setStatus(TicketStatus.NEW);
+            ticket.setTriageSource(TriageSource.NONE);
+        }
+        ticket.touch();
+        events.publishEvent(new TicketCreated(ticket.getId()));
+        return TicketDetail.from(ticket, caller);
     }
 
     /** The v1 behaviour: an agent sets category and priority by hand. Always overrides the AI. */
@@ -130,19 +149,60 @@ public class TicketService {
     }
 
     @Transactional
+    public TicketDetail updateTimeline(AuthUser caller, Long id, TimelineRequest request) {
+        if (caller.role() != Role.ADMIN) {
+            throw new ForbiddenException("Only an administrator can edit an incident timeline");
+        }
+        Ticket ticket = find(id);
+        int days = request.expectedResolutionDays();
+        boolean validDays = switch (request.severityBand()) {
+            case A -> days == 2;
+            case B -> days >= 2 && days <= 4;
+            case C -> days >= 5 && days <= 7;
+        };
+        if (!validDays) {
+            throw new BadRequestException("Resolution targets are A: 2 days, B: 2-4 days, and C: 5-7 days");
+        }
+        ticket.setSeverityBand(request.severityBand());
+        ticket.setExpectedResolutionDays(days);
+        ticket.setResolutionDueAt(Instant.now().plusSeconds(days * 86_400L));
+        ticket.touch();
+        return TicketDetail.from(ticket, caller);
+    }
+
+    @Transactional
     public TicketDetail updateStatus(AuthUser caller, Long id, StatusRequest req) {
         Ticket t = find(id);
         TicketStatus target = req.status();
-        boolean newlyResolved = target == TicketStatus.RESOLVED && t.getStatus() != TicketStatus.RESOLVED;
-        if (target == TicketStatus.RESOLVED) {
+        boolean newlyFinished = target.isFinished() && !t.getStatus().isFinished();
+        boolean reopening = t.getStatus().isFinished() && !target.isFinished();
+        if (reopening && caller.role() != Role.ADMIN) {
+            throw new ForbiddenException("Only an administrator can reopen a closed incident");
+        }
+        if (reopening) {
+            t.setResolution(null);
+        }
+        if (target.isFinished()) {
             if (req.resolution() == null || req.resolution().isBlank()) {
-                throw new BadRequestException("Please describe how the ticket was resolved");
+                throw new BadRequestException("Please add completion remarks before closing the incident");
             }
             t.setResolution(req.resolution().strip());
         }
         t.setStatus(target);
+        if (newlyFinished) {
+            t.setSharedIncidentIdsJson(null);
+            t.setKnowledgeAccessRequested(false);
+        }
+        if (newlyFinished) {
+            t.setSharedIncidentIdsJson(null);
+            t.setKnowledgeAccessRequested(false);
+        }
+        if (newlyFinished) {
+            t.setSharedIncidentIdsJson(null);
+            t.setKnowledgeAccessRequested(false);
+        }
         t.touch();
-        if (newlyResolved) {
+        if (newlyFinished) {
             events.publishEvent(new TicketResolved(t.getId()));
         }
         return TicketDetail.from(t, caller);
@@ -236,6 +296,7 @@ public class TicketService {
             if (aiProducedAnswer) {
                 t.setCategory(r.category());
                 t.setPriority(r.priority());
+                updateResolutionTarget(t, SeverityBand.forPriority(r.priority()));
                 t.setTriageSource(TriageSource.AI);
             }
             t.setStatus(r.needsHuman() ? TicketStatus.NEEDS_HUMAN_TRIAGE : TicketStatus.TRIAGED);
@@ -256,13 +317,20 @@ public class TicketService {
         return tickets.findById(id).orElseThrow(() -> new NotFoundException("Ticket not found"));
     }
 
-    /** Users cannot browse other people's or completed incidents; hide both as not found. */
+    /** Users can follow their own incidents through resolution but cannot browse another user's. */
     private Ticket visibleTicket(AuthUser caller, Long id) {
         Ticket t = find(id);
-        if (!caller.isStaff() && (!t.getRequester().getId().equals(caller.id()) || t.getStatus().isFinished())) {
+        if (!caller.isStaff() && !t.getRequester().getId().equals(caller.id())) {
             throw new NotFoundException("Ticket not found");
         }
         return t;
+    }
+
+    private static void updateResolutionTarget(Ticket ticket, SeverityBand band) {
+        int days = band.defaultDays();
+        ticket.setSeverityBand(band);
+        ticket.setExpectedResolutionDays(days);
+        ticket.setResolutionDueAt(Instant.now().plusSeconds(days * 86_400L));
     }
 
     private static String truncate(String s, int max) {

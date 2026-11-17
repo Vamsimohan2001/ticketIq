@@ -47,8 +47,20 @@ class SecurityAndValidationTest {
     }
 
     @Test
+    void seededAgentAccountsUseRoleBoundLogin() throws Exception {
+        for (String id : new String[] {"agent@ticketiq.local", "agent.hr@ticketiq.local",
+                "agent.finance@ticketiq.local", "agent.engineering@ticketiq.local", "agent.access@ticketiq.local"}) {
+            TestSupport.login(mvc, id, "12345678");
+        }
+        mvc.perform(post("/api/auth/login").contentType(MediaType.APPLICATION_JSON)
+                        .content(Json.write(Map.of("userId", "user@ticketiq.local", "password", "12345678",
+                                "role", "ADMIN"))))
+                .andExpect(status().isUnauthorized());
+    }
+
+    @Test
     void normalUsersCannotReachStaffEndpoints() throws Exception {
-        String token = TestSupport.login(mvc, "user@ticketiq.local", "User@123");
+        String token = TestSupport.login(mvc, "user@ticketiq.local", "12345678");
         mvc.perform(get("/api/stats").header("Authorization", "Bearer " + token)).andExpect(status().isForbidden());
         mvc.perform(get("/api/kb").header("Authorization", "Bearer " + token)).andExpect(status().isForbidden());
         mvc.perform(get("/api/ai/stats").header("Authorization", "Bearer " + token)).andExpect(status().isForbidden());
@@ -56,25 +68,29 @@ class SecurityAndValidationTest {
 
     @Test
     void agentsCannotUseAdminOnlyEndpoints() throws Exception {
-        String token = TestSupport.login(mvc, "agent@ticketiq.local", "Agent@123");
+        String token = TestSupport.login(mvc, "agent@ticketiq.local", "12345678");
         mvc.perform(get("/api/ai/stats").header("Authorization", "Bearer " + token)).andExpect(status().isForbidden());
         mvc.perform(get("/api/kb").header("Authorization", "Bearer " + token)).andExpect(status().isOk());
         mvc.perform(post("/api/kb").header("Authorization", "Bearer " + token)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(Json.write(Map.of("title", "Agent article", "content", "Not allowed to edit."))))
                 .andExpect(status().isForbidden());
+        mvc.perform(get("/api/approvals").header("Authorization", "Bearer " + token))
+                .andExpect(status().isForbidden());
+        mvc.perform(get("/api/tickets/1/knowledge-recommendations").header("Authorization", "Bearer " + token))
+                .andExpect(status().isForbidden());
     }
 
     @Test
     void adminsCanUseAdministrativeEndpoints() throws Exception {
-        String token = TestSupport.login(mvc, "admin@ticketiq.local", "Admin@123");
+        String token = TestSupport.login(mvc, "admin@ticketiq.local", "12345678");
         mvc.perform(get("/api/ai/stats").header("Authorization", "Bearer " + token)).andExpect(status().isOk());
         mvc.perform(get("/api/kb").header("Authorization", "Bearer " + token)).andExpect(status().isOk());
     }
 
     @Test
     void blankTicketFieldsReturnFieldErrors() throws Exception {
-        String token = TestSupport.login(mvc, "user@ticketiq.local", "User@123");
+        String token = TestSupport.login(mvc, "user@ticketiq.local", "12345678");
         mvc.perform(post("/api/tickets").header("Authorization", "Bearer " + token)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(Json.write(Map.of("title", "", "description", ""))))
@@ -85,7 +101,7 @@ class SecurityAndValidationTest {
 
     @Test
     void aTamperedTokenIsTreatedAsAnonymous() throws Exception {
-        String token = TestSupport.login(mvc, "user@ticketiq.local", "User@123");
+        String token = TestSupport.login(mvc, "user@ticketiq.local", "12345678");
         mvc.perform(get("/api/tickets").header("Authorization", "Bearer " + token + "x"))
                 .andExpect(status().isUnauthorized());
     }

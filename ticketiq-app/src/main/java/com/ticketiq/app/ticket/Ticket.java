@@ -41,6 +41,9 @@ public class Ticket {
     @Column(nullable = false, length = 4000)
     private String description;
 
+    @jakarta.persistence.Column(unique = true, length = 40)
+    private String seedKey;
+
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private TicketStatus status = TicketStatus.NEW;
@@ -52,6 +55,18 @@ public class Ticket {
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private Priority priority = Priority.MEDIUM;
+
+    @Enumerated(EnumType.STRING)
+    private SeverityBand severityBand = SeverityBand.B;
+
+    private Integer expectedResolutionDays = SeverityBand.B.defaultDays();
+
+    private Instant resolutionDueAt = Instant.now().plus(4, java.time.temporal.ChronoUnit.DAYS);
+
+    private Boolean knowledgeAccessRequested = false;
+
+    @Column(length = 4000)
+    private String sharedIncidentIdsJson;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
@@ -67,6 +82,14 @@ public class Ticket {
 
     @Column(length = 4000)
     private String resolution;
+
+    @Column(length = 120)
+    private String supportTeam;
+    @Column(length = 4000)
+    private String handlingNotes;
+    @Column(length = 2000)
+    private String selfService;
+    private Integer resolutionDays;
 
     // ---- version 2: what the AI suggested ----
     @Column(length = 300)
@@ -106,6 +129,24 @@ public class Ticket {
         this.requester = requester;
     }
 
+    public void updateDetails(String title, String description) {
+        this.title = title.strip();
+        this.description = description.strip();
+    }
+
+    public void clearAiSuggestions() {
+        aiSummary = null;
+        aiConfidence = null;
+        aiRationale = null;
+        aiNeedsHuman = false;
+        aiReason = null;
+        aiSuggestedReply = null;
+        aiSourcesJson = null;
+        aiSimilarJson = null;
+        aiProvider = null;
+        aiModel = null;
+    }
+
     public void touch() {
         this.updatedAt = Instant.now();
     }
@@ -114,12 +155,26 @@ public class Ticket {
     public Long getId() { return id; }
     public String getTitle() { return title; }
     public String getDescription() { return description; }
+    public String getSeedKey() { return seedKey; }
+    public void setSeedKey(String seedKey) { this.seedKey = seedKey; }
     public TicketStatus getStatus() { return status; }
     public void setStatus(TicketStatus status) { this.status = status; }
     public Category getCategory() { return category; }
     public void setCategory(Category category) { this.category = category; }
     public Priority getPriority() { return priority; }
     public void setPriority(Priority priority) { this.priority = priority; }
+    public SeverityBand getSeverityBand() { return severityBand == null ? SeverityBand.B : severityBand; }
+    public void setSeverityBand(SeverityBand severityBand) { this.severityBand = severityBand; }
+    public Integer getExpectedResolutionDays() {
+        return expectedResolutionDays == null ? getSeverityBand().defaultDays() : expectedResolutionDays;
+    }
+    public void setExpectedResolutionDays(Integer expectedResolutionDays) { this.expectedResolutionDays = expectedResolutionDays; }
+    public Instant getResolutionDueAt() { return resolutionDueAt; }
+    public void setResolutionDueAt(Instant resolutionDueAt) { this.resolutionDueAt = resolutionDueAt; }
+    public boolean isKnowledgeAccessRequested() { return Boolean.TRUE.equals(knowledgeAccessRequested); }
+    public void setKnowledgeAccessRequested(boolean knowledgeAccessRequested) { this.knowledgeAccessRequested = knowledgeAccessRequested; }
+    public String getSharedIncidentIdsJson() { return sharedIncidentIdsJson; }
+    public void setSharedIncidentIdsJson(String sharedIncidentIdsJson) { this.sharedIncidentIdsJson = sharedIncidentIdsJson; }
     public TriageSource getTriageSource() { return triageSource; }
     public void setTriageSource(TriageSource triageSource) { this.triageSource = triageSource; }
     public User getRequester() { return requester; }
@@ -127,6 +182,14 @@ public class Ticket {
     public void setAssignee(User assignee) { this.assignee = assignee; }
     public String getResolution() { return resolution; }
     public void setResolution(String resolution) { this.resolution = resolution; }
+    public String getSupportTeam() { return supportTeam; }
+    public void setSupportTeam(String supportTeam) { this.supportTeam = supportTeam; }
+    public String getHandlingNotes() { return handlingNotes; }
+    public void setHandlingNotes(String handlingNotes) { this.handlingNotes = handlingNotes; }
+    public String getSelfService() { return selfService; }
+    public void setSelfService(String selfService) { this.selfService = selfService; }
+    public Integer getResolutionDays() { return resolutionDays; }
+    public void setResolutionDays(Integer resolutionDays) { this.resolutionDays = resolutionDays; }
     public String getAiSummary() { return aiSummary; }
     public void setAiSummary(String aiSummary) { this.aiSummary = aiSummary; }
     public Double getAiConfidence() { return aiConfidence; }

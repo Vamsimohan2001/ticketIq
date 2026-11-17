@@ -9,6 +9,10 @@ import org.springframework.data.jpa.repository.Query;
 
 public interface TicketRepository extends JpaRepository<Ticket, Long>, JpaSpecificationExecutor<Ticket> {
 
+    boolean existsBySeedKey(String seedKey);
+    List<Ticket> findByStatusNotInAndUpdatedAtBeforeOrderByUpdatedAtAsc(Collection<TicketStatus> statuses,
+                                                                        Instant updatedBefore);
+
     /** Tickets still waiting for the AI after a grace period (used by the retry sweeper). */
     List<Ticket> findTop20ByStatusAndCreatedAtBeforeOrderByCreatedAtAsc(TicketStatus status, Instant before);
 

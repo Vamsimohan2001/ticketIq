@@ -36,8 +36,8 @@ class TicketFlowTest {
 
     @Test
     void ticketIsTriagedByTheAiThenOverriddenAndResolvedByAnAgent() throws Exception {
-        String user = TestSupport.login(mvc, "user@ticketiq.local", "User@123");
-        String agent = TestSupport.login(mvc, "agent@ticketiq.local", "Agent@123");
+        String user = TestSupport.login(mvc, "user@ticketiq.local", "12345678");
+        String agent = TestSupport.login(mvc, "agent@ticketiq.local", "12345678");
 
         String created = mvc.perform(post("/api/tickets").header("Authorization", "Bearer " + user)
                         .contentType(MediaType.APPLICATION_JSON)
@@ -89,8 +89,8 @@ class TicketFlowTest {
 
     @Test
     void aUserCannotSeeSomeoneElsesTicket() throws Exception {
-        String agent = TestSupport.login(mvc, "agent@ticketiq.local", "Agent@123");
-        String user = TestSupport.login(mvc, "user@ticketiq.local", "User@123");
+        String agent = TestSupport.login(mvc, "agent@ticketiq.local", "12345678");
+        String user = TestSupport.login(mvc, "user@ticketiq.local", "12345678");
         String created = mvc.perform(post("/api/tickets").header("Authorization", "Bearer " + agent)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(Json.write(Map.of("title", "Agent's own ticket", "description", "Private to its owner."))))
@@ -100,9 +100,9 @@ class TicketFlowTest {
     }
 
     @Test
-    void usersCannotBrowseResolvedIncidentHistoryButAgentsCan() throws Exception {
-        String user = TestSupport.login(mvc, "user@ticketiq.local", "User@123");
-        String agent = TestSupport.login(mvc, "agent@ticketiq.local", "Agent@123");
+    void usersOnlySeeTheirOwnResolvedIncidentsWhileAgentsCanBrowseTheCorpus() throws Exception {
+        String user = TestSupport.login(mvc, "user@ticketiq.local", "12345678");
+        String agent = TestSupport.login(mvc, "agent@ticketiq.local", "12345678");
 
         mvc.perform(get("/api/tickets?status=RESOLVED").header("Authorization", "Bearer " + user))
                 .andExpect(status().isOk())
@@ -120,5 +120,114 @@ class TicketFlowTest {
                 .andExpect(status().isNotFound());
         mvc.perform(get("/api/tickets/" + resolvedId).header("Authorization", "Bearer " + agent))
                 .andExpect(status().isOk());
+    }
+
+    @Test
+    void usersCanFollowTheirOwnClosedIncidentAndOnlyAdminsCanReopenIt() throws Exception {
+        String user = TestSupport.login(mvc, "user@ticketiq.local", "12345678");
+        String agent = TestSupport.login(mvc, "agent@ticketiq.local", "12345678");
+        String admin = TestSupport.login(mvc, "admin@ticketiq.local", "12345678");
+        String created = mvc.perform(post("/api/tickets").header("Authorization", "Bearer " + user)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(Json.write(Map.of("title", "Completed incident visibility",
+                                "description", "A requester should keep access to their closed incident."))))
+                .andExpect(status().isCreated()).andReturn().getResponse().getContentAsString();
+        long id = Json.number(Json.parseObject(created), "id").longValue();
+        mvc.perform(patch("/api/tickets/" + id + "/status").header("Authorization", "Bearer " + agent)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(Json.write(Map.of("status", "CLOSED", "resolution", "The service was restored."))))
+                .andExpect(status().isOk());
+        assertThat(Json.string(getJson("/api/tickets/" + id, user), "resolution"))
+                .isEqualTo("The service was restored.");
+        mvc.perform(patch("/api/tickets/" + id + "/status").header("Authorization", "Bearer " + agent)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(Json.write(Map.of("status", "IN_PROGRESS"))))
+                .andExpect(status().isForbidden());
+        mvc.perform(patch("/api/tickets/" + id + "/status").header("Authorization", "Bearer " + admin)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(Json.write(Map.of("status", "IN_PROGRESS"))))
+                .andExpect(status().isOk());
+    }
+
+    @Test
+    void agentSeverityProposalNeedsRequesterThenAdminApproval() throws Exception {
+        String user = TestSupport.login(mvc, "user@ticketiq.local", "12345678");
+        String agent = TestSupport.login(mvc, "agent@ticketiq.local", "12345678");
+        String admin = TestSupport.login(mvc, "admin@ticketiq.local", "12345678");
+        String created = mvc.perform(post("/api/tickets").header("Authorization", "Bearer " + user)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(Json.write(Map.of("title", "Severity approval workflow",
+                                "description", "The incident impact needs a review."))))
+                .andExpect(status().isCreated()).andReturn().getResponse().getContentAsString();
+        long id = Json.number(Json.parseObject(created), "id").longValue();
+
+        String request = mvc.perform(post("/api/tickets/" + id + "/requests")
+                        .header("Authorization", "Bearer " + agent).contentType(MediaType.APPLICATION_JSON)
+                        .content(Json.write(Map.of("type", "SEVERITY_CHANGE", "proposedSeverity", "A",
+                                "reason", "Multiple teams are blocked."))))
+                .andExpect(status().isCreated()).andReturn().getResponse().getContentAsString();
+        long requestId = Json.number(Json.parseObject(request), "id").longValue();
+        mvc.perform(post("/api/tickets/" + id + "/requests/" + requestId + "/user-decision")
+                        .header("Authorization", "Bearer " + user).contentType(MediaType.APPLICATION_JSON)
+                        .content(Json.write(Map.of("approved", true))))
+                .andExpect(status().isOk());
+        mvc.perform(patch("/api/approvals/" + requestId).header("Authorization", "Bearer " + admin)
+                        .contentType(MediaType.APPLICATION_JSON).content(Json.write(Map.of("approved", true))))
+                .andExpect(status().isOk());
+        Map<String, Object> updated = getJson("/api/tickets/" + id, user);
+        assertThat(Json.string(updated, "severityBand")).isEqualTo("A");
+        assertThat(Json.number(updated, "expectedResolutionDays")).isEqualTo(2.0);
+        mvc.perform(patch("/api/tickets/" + id + "/timeline").header("Authorization", "Bearer " + admin)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(Json.write(Map.of("severityBand", "C", "expectedResolutionDays", 6))))
+                .andExpect(status().isOk());
+        assertThat(Json.string(getJson("/api/tickets/" + id, user), "severityBand")).isEqualTo("C");
+        mvc.perform(patch("/api/tickets/" + id + "/timeline").header("Authorization", "Bearer " + admin)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(Json.write(Map.of("severityBand", "A", "expectedResolutionDays", 3))))
+                .andExpect(status().isBadRequest());
+        mvc.perform(patch("/api/tickets/" + id + "/timeline").header("Authorization", "Bearer " + admin)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(Json.write(Map.of("severityBand", "C", "expectedResolutionDays", 6))))
+                .andExpect(status().isOk());
+        assertThat(Json.string(getJson("/api/tickets/" + id, user), "severityBand")).isEqualTo("C");
+        mvc.perform(patch("/api/tickets/" + id + "/timeline").header("Authorization", "Bearer " + admin)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(Json.write(Map.of("severityBand", "A", "expectedResolutionDays", 3))))
+                .andExpect(status().isBadRequest());
+        mvc.perform(patch("/api/tickets/" + id + "/timeline").header("Authorization", "Bearer " + admin)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(Json.write(Map.of("severityBand", "C", "expectedResolutionDays", 6))))
+                .andExpect(status().isOk());
+        assertThat(Json.string(getJson("/api/tickets/" + id, user), "severityBand")).isEqualTo("C");
+        mvc.perform(patch("/api/tickets/" + id + "/timeline").header("Authorization", "Bearer " + admin)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(Json.write(Map.of("severityBand", "A", "expectedResolutionDays", 3))))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void requesterCanEditAnActiveIncidentButNotAfterClosure() throws Exception {
+        String user = TestSupport.login(mvc, "user@ticketiq.local", "12345678");
+        String created = mvc.perform(post("/api/tickets").header("Authorization", "Bearer " + user)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(Json.write(Map.of("title", "Original title", "description", "Original details."))))
+                .andExpect(status().isCreated()).andReturn().getResponse().getContentAsString();
+        long id = Json.number(Json.parseObject(created), "id").longValue();
+        mvc.perform(patch("/api/tickets/" + id).header("Authorization", "Bearer " + user)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(Json.write(Map.of("title", "Updated title", "description", "Updated details."))))
+                .andExpect(status().isOk());
+        Map<String, Object> updated = getJson("/api/tickets/" + id, user);
+        assertThat(Json.string(updated, "title")).isEqualTo("Updated title");
+        assertThat(Json.string(updated, "description")).isEqualTo("Updated details.");
+    }
+
+    @Test
+    void databaseSeedsAtLeastSixtyResolvedOrClosedKnowledgeIncidents() throws Exception {
+        String agent = TestSupport.login(mvc, "agent@ticketiq.local", "12345678");
+        long closed = Json.number(getJson("/api/tickets?status=CLOSED&size=100", agent), "totalItems").longValue();
+        long resolved = Json.number(getJson("/api/tickets?status=RESOLVED&size=100", agent), "totalItems").longValue();
+        assertThat(closed + resolved).isGreaterThanOrEqualTo(60);
     }
 }

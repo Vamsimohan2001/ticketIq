@@ -1,11 +1,11 @@
-### AI tools and admin endpoints. Sign in as admin@ticketiq.local / Admin@123 first.
+### AI tools and admin endpoints. Sign in as admin@ticketiq.local / the seeded initial password first.
 @base = http://localhost:8080
 
 ###
 POST {{base}}/api/auth/login
 Content-Type: application/json
 
-{ "userId": "admin@ticketiq.local", "password": "Admin@123" }
+{ "userId": "admin@ticketiq.local", "password": "12345678", "role": "ADMIN" }
 
 ###
 @token = PASTE_ADMIN_ACCESS_TOKEN_HERE

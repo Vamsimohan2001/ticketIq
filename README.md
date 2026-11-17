@@ -51,13 +51,24 @@ start the database with `docker compose up -d` and set `SPRING_PROFILES_ACTIVE=p
 
 ### Demo accounts
 
-The seeded accounts are for local and demo use only:
+On a fresh demo database, these accounts are seeded for local use. All seeded accounts use the same initial password,
+`12345678`; change it from **My profile** after signing in.
 
-- Admin: `admin@ticketiq.local` / `Admin@123`
-- Agent: `agent@ticketiq.local` / `Agent@123`
-- User: `user@ticketiq.local` / `User@123`
+- Admin: `admin@ticketiq.local`
+- Service desk agent: `agent@ticketiq.local`
+- HR systems agent: `agent.hr@ticketiq.local`
+- Finance systems agent: `agent.finance@ticketiq.local`
+- Application engineering agent: `agent.engineering@ticketiq.local`
+- Identity and access agent: `agent.access@ticketiq.local`
+- User: `user@ticketiq.local`
 
-You can also create an account from the sign-in page. New accounts get the USER role.
+Signup supports USER, AGENT, and ADMIN requests. Every new account remains disabled until an administrator approves it
+from **Approvals**. Login checks the selected role against the account.
+
+The demo data includes 60 closed/resolved incidents spanning HR, finance, access, endpoint, application, network,
+integration, how-to, and product-request cases. Each record includes the owning team, how the case was handled,
+completion remarks, resolution time, and safe self-service guidance where appropriate. These records are indexed with
+the help articles for RAG. No active incidents are pre-seeded; new tickets are created through the portal.
 
 ## AI providers
 

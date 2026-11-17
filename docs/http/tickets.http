@@ -6,7 +6,7 @@
 POST {{base}}/api/auth/login
 Content-Type: application/json
 
-{ "userId": "agent@ticketiq.local", "password": "Agent@123" }
+{ "userId": "agent@ticketiq.local", "password": "12345678", "role": "AGENT" }
 
 ###
 @token = PASTE_ACCESS_TOKEN_HERE

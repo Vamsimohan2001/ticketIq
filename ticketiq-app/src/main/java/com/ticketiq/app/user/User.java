@@ -32,6 +32,12 @@ public class User {
     @Column(nullable = false)
     private String fullName;
 
+    @Column(length = 100)
+    private String team;
+
+    private Boolean enabled = true;
+    private Boolean approvalPending = false;
+
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private Role role;
@@ -48,11 +54,19 @@ public class User {
     }
 
     public User(String userId, String passwordHash, String fullName, Role role, String employeeId) {
+        this(userId, passwordHash, fullName, role, employeeId, null, true);
+    }
+
+    public User(String userId, String passwordHash, String fullName, Role role, String employeeId,
+                String team, boolean enabled) {
         this.userId = userId.trim().toLowerCase();
         this.employeeId = employeeId == null ? null : employeeId.trim();
         this.passwordHash = passwordHash;
         this.fullName = fullName.trim();
         this.role = role;
+        this.team = team == null ? null : team.trim();
+        this.enabled = enabled;
+        this.approvalPending = !enabled;
     }
 
     public Long getId() {
@@ -67,12 +81,48 @@ public class User {
         return employeeId;
     }
 
+    public void setEmployeeId(String employeeId) {
+        this.employeeId = employeeId == null || employeeId.isBlank() ? null : employeeId.trim();
+    }
+
     public String getPasswordHash() {
         return passwordHash;
     }
 
     public String getFullName() {
         return fullName;
+    }
+
+    public void setFullName(String fullName) {
+        this.fullName = fullName.trim();
+    }
+
+    public String getTeam() {
+        return team;
+    }
+
+    public void setTeam(String team) {
+        this.team = team == null || team.isBlank() ? null : team.trim();
+    }
+
+    public boolean isEnabled() {
+        return enabled == null || enabled;
+    }
+
+    public boolean isApprovalPending() {
+        return Boolean.TRUE.equals(approvalPending);
+    }
+
+    public void setEnabled(boolean enabled) {
+        this.enabled = enabled;
+    }
+
+    public void setApprovalPending(boolean approvalPending) {
+        this.approvalPending = approvalPending;
+    }
+
+    public void setPasswordHash(String passwordHash) {
+        this.passwordHash = passwordHash;
     }
 
     public Role getRole() {

@@ -25,10 +25,16 @@ the limit has been reached.
 | IP-2 | Privacy gate | Emails, phones (incl. +91 and 10-digit), PAN, Aadhaar-like, Luhn-valid cards become `[EMAIL]` etc. before reaching a model or embedding; indexed text is redacted too | `redaction/PiiRedactor`, used first in `AiPipeline` and `AiRuntime.index*` |
 | IP-3 | Structured output | Model must return one JSON object; parsed and validated into a `TriageResult` record; one repair attempt, then fall back to a human | `ai/TriageService`, `ai/TriageResult`, `resources/prompts/triage-*.txt` |
 | IP-4 | Embeddings | Redacted text becomes a unit vector; cosine search finds earlier tickets above the similarity threshold | `llm/*EmbeddingModel`, `ai/SimilarityService`, `ai/InMemoryVectorStore` |
-| IP-5 | Retrieval | Top 3 knowledge-base articles and top 3 resolved tickets that clear the relevance threshold | `ai/ReplyDraftService` |
+| IP-5 | Retrieval | Top 3 knowledge-base articles and top 3 closed/resolved incidents that clear the relevance threshold. Incident documents include completion remarks, owning team, agent handling, and safe self-service notes. | `ai/ReplyDraftService`, `ai/AiIndexer` |
 | IP-6 | Grounded generation | The model may use only the supplied context and must cite `[kb:id]` / `[ticket:id]`; no context means no draft | `ai/ReplyDraftService`, `prompts/reply-*.txt` |
 | IP-7 | Guardrails | Low confidence or any failure sets `needsHuman`; the AI never closes a ticket or messages a user; a manual triage overrides the AI | `ai/GuardrailPolicy`, `TicketService.applyAiTriage` |
 | IP-8 | Feedback and learning loop | Resolved tickets and KB edits are embedded; agents mark drafts helpful or not; acceptance rate appears in Insights | `ai/AiIndexer`, `ticket/AiFeedback`, `stats/StatsController` |
+
+The demo corpus is a curated resource of 60 closed/resolved incidents in
+`ticketiq-core/src/main/resources/seed/resolved_incidents.json` and
+`ticketiq-core/src/main/resources/seed/resolved_tickets.json`. The index is rebuilt from those stored incident records
+at startup. For a live incident, the admin can review relevant matches and explicitly share selected completion and
+handling details with its requester; that access is unavailable once the live incident closes.
 
 ## Prompt-injection defence
 

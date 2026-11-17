@@ -7,6 +7,8 @@ import com.ticketiq.core.model.Category;
 import com.ticketiq.core.model.Priority;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Min;
+import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Size;
 import java.time.Instant;
 import java.util.List;
@@ -23,6 +25,10 @@ public final class TicketDtos {
                                       @NotBlank @Size(max = 4000) String description) {
     }
 
+    public record UpdateTicketRequest(@NotBlank @Size(max = 200) String title,
+                                      @NotBlank @Size(max = 4000) String description) {
+    }
+
     public record TriageRequest(@NotNull Category category, @NotNull Priority priority) {
     }
 
@@ -30,6 +36,10 @@ public final class TicketDtos {
     }
 
     public record StatusRequest(@NotNull TicketStatus status, @Size(max = 4000) String resolution) {
+    }
+
+    public record TimelineRequest(@NotNull SeverityBand severityBand,
+                                  @Min(2) @Max(7) int expectedResolutionDays) {
     }
 
     public record CommentRequest(@NotBlank @Size(max = 4000) String body, boolean internal) {
@@ -43,12 +53,15 @@ public final class TicketDtos {
     }
 
     public record TicketSummary(Long id, String title, TicketStatus status, Category category, Priority priority,
-                                String suggestedTeam, TriageSource triageSource, String aiSummary, Double aiConfidence,
+                                String suggestedTeam, SeverityBand severityBand, Integer expectedResolutionDays,
+                                Instant resolutionDueAt, boolean knowledgeAccessRequested, TriageSource triageSource,
+                                String aiSummary, Double aiConfidence,
                                 boolean needsHuman, String requesterName, String assigneeName,
                                 Instant createdAt, Instant updatedAt) {
         static TicketSummary from(Ticket t, boolean includeAi) {
             return new TicketSummary(t.getId(), t.getTitle(), t.getStatus(), t.getCategory(), t.getPriority(),
-                    TicketTeams.forCategory(t.getCategory()), t.getTriageSource(), includeAi ? t.getAiSummary() : null,
+                    team(t), t.getSeverityBand(), t.getExpectedResolutionDays(), dueAt(t),
+                    t.isKnowledgeAccessRequested(), t.getTriageSource(), includeAi ? t.getAiSummary() : null,
                     includeAi ? t.getAiConfidence() : null, includeAi && t.isAiNeedsHuman(),
                     t.getRequester().getFullName(),
                     t.getAssignee() == null ? null : t.getAssignee().getFullName(),
@@ -68,18 +81,34 @@ public final class TicketDtos {
                             String provider, String model) {
     }
 
+    public record PublicInsight(String warning, String issueSummary, String possibleReason, String likelyTeam) {
+    }
+
     public record TicketDetail(Long id, String title, String description, TicketStatus status, Category category,
-                               Priority priority, String suggestedTeam, TriageSource triageSource, String requesterName,
-                               Long assigneeId, String assigneeName, String resolution,
-                               Instant createdAt, Instant updatedAt, AiInsight ai) {
+                               Priority priority, String suggestedTeam, SeverityBand severityBand,
+                               Integer expectedResolutionDays, Instant resolutionDueAt, TriageSource triageSource,
+                               String requesterName, String requesterUserId, String requesterEmployeeId,
+                               Long assigneeId, String assigneeName, String assigneeTeam, String resolution,
+                               String handlingNotes, String selfService, boolean knowledgeAccessRequested,
+                               boolean knowledgeDataShared,
+                               Instant createdAt, Instant updatedAt, PublicInsight publicInsight, AiInsight ai) {
         static TicketDetail from(Ticket t, AuthUser viewer) {
             User assignee = t.getAssignee();
             AiInsight ai = viewer.isStaff() && t.getAiSummary() != null ? insight(t) : null;
+            PublicInsight publicInsight = !viewer.isStaff() && t.getAiSummary() != null
+                    ? new PublicInsight("AI-generated and may be incorrect. This is informational only, not a diagnosis or fix.",
+                    t.getAiSummary(), t.getAiRationale(), team(t)) : null;
             return new TicketDetail(t.getId(), t.getTitle(), t.getDescription(), t.getStatus(), t.getCategory(),
-                    t.getPriority(), TicketTeams.forCategory(t.getCategory()), t.getTriageSource(),
-                    t.getRequester().getFullName(), assignee == null ? null : assignee.getId(),
-                    assignee == null ? null : assignee.getFullName(), t.getResolution(), t.getCreatedAt(),
-                    t.getUpdatedAt(), ai);
+                    t.getPriority(), team(t), t.getSeverityBand(), t.getExpectedResolutionDays(), dueAt(t),
+                    t.getTriageSource(),
+                    t.getRequester().getFullName(), t.getRequester().getUserId(), t.getRequester().getEmployeeId(),
+                    assignee == null ? null : assignee.getId(),
+                    assignee == null ? null : assignee.getFullName(), assignee == null ? null : assignee.getTeam(),
+                    t.getResolution(), t.getHandlingNotes(), t.getSelfService(), t.isKnowledgeAccessRequested(),
+                    t.getSharedIncidentIdsJson() != null && !t.getSharedIncidentIdsJson().isBlank(), t.getCreatedAt(),
+                    t.getSharedIncidentIdsJson() != null && !t.getSharedIncidentIdsJson().isBlank(), t.getCreatedAt(),
+                    t.getSharedIncidentIdsJson() != null && !t.getSharedIncidentIdsJson().isBlank(), t.getCreatedAt(),
+                    t.getUpdatedAt(), publicInsight, ai);
         }
     }
 
@@ -121,5 +150,14 @@ public final class TicketDtos {
             return new SourceView(Json.string(m, "type"), Json.string(m, "id"), Json.string(m, "title"),
                     Json.number(m, "score"));
         }).toList();
+    }
+
+    private static String team(Ticket t) {
+        return t.getSupportTeam() == null ? TicketTeams.forCategory(t.getCategory()) : t.getSupportTeam();
+    }
+
+    private static Instant dueAt(Ticket t) {
+        return t.getResolutionDueAt() == null
+                ? t.getCreatedAt().plusSeconds(t.getExpectedResolutionDays() * 86_400L) : t.getResolutionDueAt();
     }
 }

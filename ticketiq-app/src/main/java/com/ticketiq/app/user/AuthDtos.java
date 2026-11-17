@@ -15,18 +15,20 @@ public final class AuthDtos {
     private AuthDtos() {
     }
 
-    public record LoginRequest(@NotBlank @Size(max = 100) String userId, @NotBlank String password) {
+    public record LoginRequest(@NotBlank @Size(max = 100) String userId, @NotBlank String password, Role role) {
     }
 
     public record SignupRequest(
-            @NotBlank @Pattern(regexp = "\\d{1,30}", message = "must contain 1 to 30 digits") String employeeId,
+            @Pattern(regexp = "\\d{1,30}", message = "must contain 1 to 30 digits") String employeeId,
             @NotBlank @Size(max = 100) String fullName,
             @NotBlank @Size(min = 3, max = 50)
             @Pattern(regexp = "[A-Za-z0-9._-]+", message = "use letters, numbers, dots, underscores or hyphens")
             String userId,
             @NotBlank @Pattern(regexp = STRONG_PASSWORD,
                     message = "must be 8 to 72 printable characters and include lowercase, uppercase, a number and a symbol")
-            String password) {
+            String password,
+            Role role,
+            @Size(max = 100) String team) {
     }
 
     public record RefreshRequest(@NotBlank String refreshToken) {
@@ -41,13 +43,31 @@ public final class AuthDtos {
                     message = "must be 8 to 72 printable characters and include lowercase, uppercase, a number and a symbol")
             String password,
             @NotBlank @Size(max = 100) String fullName,
-            @NotNull Role role) {
+            @NotNull Role role,
+            @Size(max = 100) String team) {
+            @Size(max = 100) String team) {
     }
 
-    public record UserResponse(Long id, String userId, String employeeId, String fullName, Role role) {
+    public record UserResponse(Long id, String userId, String employeeId, String fullName, Role role,
+                               String team, boolean enabled, boolean approvalPending) {
         public static UserResponse from(User u) {
-            return new UserResponse(u.getId(), u.getUserId(), u.getEmployeeId(), u.getFullName(), u.getRole());
+            return new UserResponse(u.getId(), u.getUserId(), u.getEmployeeId(), u.getFullName(), u.getRole(),
+                    u.getTeam(), u.isEnabled(), u.isApprovalPending());
         }
+    }
+
+    public record PasswordChangeRequest(@NotBlank String currentPassword,
+                                        @NotBlank @Pattern(regexp = STRONG_PASSWORD,
+                                                message = "must be 8 to 72 printable characters and include lowercase, uppercase, a number and a symbol")
+                                        String newPassword) {
+    }
+
+    public record ApprovalRequest(@NotNull Boolean approved) {
+    }
+
+    public record ProfileUpdateRequest(@NotBlank @Size(max = 100) String fullName,
+                                       @Pattern(regexp = "\\d{1,30}", message = "must contain 1 to 30 digits")
+                                       String employeeId) {
     }
 
     public record LoginResponse(String accessToken, String refreshToken, String tokenType,

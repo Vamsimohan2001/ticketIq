@@ -7,20 +7,34 @@ Ready-to-click examples are in `docs/http/*.http`.
 | Method and path | Who | Purpose |
 |---|---|---|
 | `GET /api/meta` | public | Version and active AI provider |
-| `POST /api/auth/signup` | public | `{employeeId,fullName,userId,password}` creates a USER profile |
-| `POST /api/auth/login` | public | `{userId,password}` returns access and refresh tokens |
+| `POST /api/auth/signup` | public | `{employeeId?,fullName,userId,password,role,team?}` creates a disabled account request |
+| `POST /api/auth/login` | public | `{userId,password,role}` returns access and refresh tokens after approval |
 | `POST /api/auth/refresh` | public | `{refreshToken}` returns new tokens |
-| `GET /api/auth/me` | any | Current profile (`userId,employeeId,fullName,role`) |
-| `POST /api/users` | ADMIN | Create a profile `{userId,employeeId?,fullName,password,role}` |
+| `GET/PUT /api/auth/me` | any | View/update current name and employee ID |
+| `POST /api/auth/password` | any | Change password after verifying the current password |
+| `POST /api/users` | ADMIN | Create a profile `{userId,employeeId?,fullName,password,role,team?}` |
 | `GET /api/users` | AGENT, ADMIN | List users |
+| `PATCH /api/users/{id}/approval` | ADMIN | `{approved}` approve or decline a new account request |
 | `POST /api/tickets` | USER, AGENT, ADMIN | `{title,description}`; status NEW; AI triage starts in the background |
-| `GET /api/tickets` | USER (own active only), AGENT, ADMIN | Filters `status, category, priority, q`, paging `page, size`; only staff see resolved/closed history |
-| `GET /api/tickets/{id}` | owner (active tickets only) or staff | Detail and category-based `suggestedTeam`; staff also get the `ai` block. Resolved/closed incidents are hidden from USER accounts. |
+| `PATCH /api/tickets/{id}` | owner or staff | `{title,description}` update an active incident; AI analysis refreshes |
+| `GET /api/tickets` | USER (own incidents), AGENT, ADMIN | Filters `status, category, priority, q`, paging `page, size`; users can follow their own incidents through closure |
+| `GET /api/tickets/{id}` | owner or staff | Incident details and team; staff get full AI analysis and users get a warning-labeled, non-actionable AI summary |
 | `PATCH /api/tickets/{id}/triage` | AGENT, ADMIN | Manual `{category,priority}`; overrides the AI |
 | `PATCH /api/tickets/{id}/assign` | AGENT, ADMIN | `{assigneeId}` (null unassigns) |
-| `PATCH /api/tickets/{id}/status` | AGENT, ADMIN | `{status,resolution?}`; RESOLVED needs a resolution |
-| `POST /api/tickets/{id}/comments` | owner (active tickets only) or staff | `{body,internal}`; internal is staff-only |
-| `GET /api/tickets/{id}/comments` | owner (active tickets only) or staff | Users never see internal notes or comments on completed tickets |
+| `PATCH /api/tickets/{id}/status` | AGENT, ADMIN | `{status,resolution?}`; closing requires completion remarks; only admins can reopen |
+| `PATCH /api/tickets/{id}/timeline` | ADMIN | `{severityBand,expectedResolutionDays}`; targets: A=2, B=2–4, C=5–7 days |
+| `POST /api/tickets/{id}/requests` | owner or staff | Request severity change or deadline extension; agent severity proposals require requester approval |
+| `GET /api/tickets/{id}/requests` | owner | Pending severity proposals from support |
+| `POST /api/tickets/{id}/requests/{requestId}/user-decision` | owner | `{approved}` accept or decline an agent severity proposal |
+| `GET/PATCH /api/approvals[/{id}]` | ADMIN | Review and approve/decline incident change requests |
+| `POST /api/tickets/{id}/knowledge-access-request` | owner | Request selected resolved-case details |
+| `GET /api/tickets/{id}/knowledge-recommendations` | ADMIN | Relevant closed cases with team, handling, completion, and self-service details |
+| `GET /api/tickets/{id}/related-incidents` | AGENT, ADMIN | Relevant closed-case details for staff knowledge-base use |
+| `PUT /api/tickets/{id}/knowledge-share` | ADMIN | `{incidentIds}` share selected recommendations until the current incident closes |
+| `GET /api/tickets/{id}/knowledge-share` | owner or staff | Admin-approved details; automatically unavailable after closure |
+| `GET /api/notifications` | AGENT, ADMIN | Incidents without an update for at least six hours |
+| `POST /api/tickets/{id}/comments` | owner or staff | `{body,internal}`; internal is staff-only |
+| `GET /api/tickets/{id}/comments` | owner or staff | Users never see internal notes |
 | `GET /api/tickets/{id}/similar` | AGENT, ADMIN | Similar past tickets with scores |
 | `GET /api/tickets/{id}/suggested-reply` | AGENT, ADMIN | Draft and its sources |
 | `POST /api/tickets/{id}/ai-feedback` | AGENT, ADMIN | `{accepted,edited}` |
@@ -39,6 +53,7 @@ Billing and Payments, Application Engineering, Product Support, Integrations, Pr
 Passwords on signup must be 8–72 printable characters and include lowercase, uppercase, a number, and a symbol.
 Priorities: `LOW, MEDIUM, HIGH, CRITICAL`.
 
-Role boundary: AGENT can review and handle tickets and read shared knowledge/Insights. Only ADMIN can manage users,
-write knowledge articles, or change AI configuration. USER accounts can create and follow their own active incidents;
-the API denies access to all other users' tickets and completed incident history.
+Role boundary: AGENT can review active and closed incidents, access RAG history, and handle support requests. Only
+ADMIN can approve accounts or incident changes, reopen incidents, choose past-case recommendations to share, write
+knowledge articles, or change AI configuration. USER accounts can create and follow their own incidents; historical
+resolution details from other incidents remain unavailable until an administrator approves them for an active ticket.
