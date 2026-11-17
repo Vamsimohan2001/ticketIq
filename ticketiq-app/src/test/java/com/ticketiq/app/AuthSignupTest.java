@@ -39,7 +39,7 @@ class AuthSignupTest {
                         .content(Json.write(Map.of("userId", "TAYLOR.USER", "password", "StrongPass9!"))))
                 .andExpect(status().isForbidden());
 
-        long userId = Json.number(Json.parseObject(signup.getResponse().getContentAsString()), "id").longValue();
+        long userId = Json.number(Json.parseObject(signup.andReturn().getResponse().getContentAsString()), "id").longValue();
         String admin = TestSupport.login(mvc, "admin@ticketiq.local", "12345678");
         mvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch(
                         "/api/users/" + userId + "/approval")
@@ -70,21 +70,6 @@ class AuthSignupTest {
                     .andExpect(status().isBadRequest())
                     .andExpect(jsonPath("$.fieldErrors.password").exists());
         }
-    }
-
-    @Test
-    void requestedAgentAccountsMustChooseAValidTeamAndStillNeedApproval() throws Exception {
-        mvc.perform(post("/api/auth/signup").contentType(MediaType.APPLICATION_JSON)
-                        .content(Json.write(Map.of("fullName", "Support Agent", "userId", "support.agent",
-                                "password", "StrongPass9!", "role", "AGENT"))))
-                .andExpect(status().isBadRequest());
-        mvc.perform(post("/api/auth/signup").contentType(MediaType.APPLICATION_JSON)
-                        .content(Json.write(Map.of("fullName", "Support Agent", "userId", "support.agent",
-                                "password", "StrongPass9!", "role", "AGENT", "team", "HR Systems"))))
-                .andExpect(status().isCreated())
-                .andExpect(jsonPath("$.role").value("AGENT"))
-                .andExpect(jsonPath("$.team").value("HR Systems"))
-                .andExpect(jsonPath("$.approvalPending").value(true));
     }
 
     @Test

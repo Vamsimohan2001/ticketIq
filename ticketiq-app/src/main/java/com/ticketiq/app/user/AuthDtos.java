@@ -45,7 +45,6 @@ public final class AuthDtos {
             @NotBlank @Size(max = 100) String fullName,
             @NotNull Role role,
             @Size(max = 100) String team) {
-            @Size(max = 100) String team) {
     }
 
     public record UserResponse(Long id, String userId, String employeeId, String fullName, Role role,

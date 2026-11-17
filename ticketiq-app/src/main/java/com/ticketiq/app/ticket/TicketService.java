@@ -79,12 +79,14 @@ public class TicketService {
     public PageResponse<TicketSummary> list(AuthUser caller, TicketStatus status, Category category,
                                             Priority priority, String text, int page, int size) {
         int safeSize = Math.min(Math.max(size, 1), MAX_PAGE_SIZE);
-        Specification<Ticket> spec = Specification.where(TicketSpecs.status(status))
-                .and(TicketSpecs.category(category))
-                .and(TicketSpecs.priority(priority))
-                .and(TicketSpecs.titleContains(text))
-                // Users can follow their own incidents through closure; staff can browse history.
-                .and(caller.isStaff() ? null : TicketSpecs.requester(caller.id()));
+        Specification<Ticket> spec = (root, query, criteriaBuilder) -> criteriaBuilder.conjunction();
+        spec = spec.and(TicketSpecs.status(status));
+        spec = spec.and(TicketSpecs.category(category));
+        spec = spec.and(TicketSpecs.priority(priority));
+        spec = spec.and(TicketSpecs.titleContains(text));
+        // Users can follow only their own active incidents; staff can browse history.
+        spec = spec.and(caller.isStaff() ? null : TicketSpecs.requester(caller.id()));
+        spec = spec.and(caller.isStaff() ? null : TicketSpecs.unfinished());
         Page<Ticket> result = tickets.findAll(spec,
                 PageRequest.of(Math.max(page, 0), safeSize, Sort.by(Sort.Direction.DESC, "createdAt")));
         List<TicketSummary> items = result.getContent().stream()

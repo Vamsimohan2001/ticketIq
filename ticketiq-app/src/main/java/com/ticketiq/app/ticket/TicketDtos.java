@@ -105,9 +105,8 @@ public final class TicketDtos {
                     assignee == null ? null : assignee.getId(),
                     assignee == null ? null : assignee.getFullName(), assignee == null ? null : assignee.getTeam(),
                     t.getResolution(), t.getHandlingNotes(), t.getSelfService(), t.isKnowledgeAccessRequested(),
-                    t.getSharedIncidentIdsJson() != null && !t.getSharedIncidentIdsJson().isBlank(), t.getCreatedAt(),
-                    t.getSharedIncidentIdsJson() != null && !t.getSharedIncidentIdsJson().isBlank(), t.getCreatedAt(),
-                    t.getSharedIncidentIdsJson() != null && !t.getSharedIncidentIdsJson().isBlank(), t.getCreatedAt(),
+                    t.getSharedIncidentIdsJson() != null && !t.getSharedIncidentIdsJson().isBlank(),
+                    t.getCreatedAt(),
                     t.getUpdatedAt(), publicInsight, ai);
         }
     }

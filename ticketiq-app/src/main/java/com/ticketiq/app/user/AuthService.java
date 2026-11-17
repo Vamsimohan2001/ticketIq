@@ -96,10 +96,6 @@ public class AuthService {
             throw new ConflictException("A profile with that employee ID already exists");
         }
         User saved = users.save(new User(userId, encoder.encode(password), fullName, role, employeeId, team, true));
-        if (employeeId != null && users.existsByEmployeeId(employeeId.trim())) {
-            throw new ConflictException("A profile with that employee ID already exists");
-        }
-        User saved = users.save(new User(userId, encoder.encode(password), fullName, role, employeeId, team, true));
         return UserResponse.from(saved);
     }
 

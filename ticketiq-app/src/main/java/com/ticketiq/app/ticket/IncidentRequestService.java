@@ -1,7 +1,6 @@
 package com.ticketiq.app.ticket;
 
 import com.ticketiq.app.common.BadRequestException;
-import com.ticketiq.app.common.ForbiddenException;
 import com.ticketiq.app.common.NotFoundException;
 import com.ticketiq.app.security.AuthUser;
 import com.ticketiq.app.user.User;
