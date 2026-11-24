@@ -1,13 +1,3 @@
----
-title: TicketIQ
-emoji: 🎫
-colorFrom: blue
-colorTo: indigo
-sdk: docker
-app_port: 7860
-pinned: false
----
-
 # TicketIQ
 
 I built TicketIQ as an IT help desk where employees can report problems and support teams can manage them through
@@ -82,24 +72,46 @@ The vector index is rebuilt from the database when the app starts. The evaluatio
 [docs/evaluation-report.md](docs/evaluation-report.md) uses the mock provider, so it is not a benchmark of Gemini or
 Ollama.
 
-## Try the free preview
+## Streamlit deployment
 
-The [TicketIQ static demo](https://vamsik2002-ticetiq.static.hf.space) is a quick way to explore the interface. It has
-sample tickets, role previews, Insights, and simulated AI suggestions. It is not connected to the Java app: there is no
-real sign-in, backend, database, or live AI service, and changes reset when the page reloads. Please do not enter
-personal or confidential information.
+The Streamlit frontend is an authenticated Python client for the existing Spring Boot API. It supports account
+requests, sign-in, ticket creation and follow-up, staff triage and status changes, and staff insights. The full Java
+portal remains available at the backend URL for the knowledge base, approvals, AI administration, and other advanced
+workflows. Streamlit sends API requests server-to-server, so the backend does not need permissive browser CORS rules.
 
-The [full Java app's Hugging Face Space](https://huggingface.co/spaces/vamsiK2002/TicketIq) is configured to run as a
-Docker Space. Hugging Face reports that this account has no `cpu-basic` quota, so the full app is currently paused.
+Run the frontend locally after starting Spring Boot (Python 3.12 or newer):
+
+```powershell
+python -m venv .venv
+.\.venv\Scripts\python.exe -m pip install -r requirements.txt
+$env:TICKETIQ_API_URL = "http://localhost:8080"
+.\.venv\Scripts\python.exe -m streamlit run streamlit_app.py
+```
+
+For Streamlit Community Cloud, deploy this repository with `streamlit_app.py` as the app entrypoint, select Python
+3.12 or newer, and add the following secret in the app settings:
+
+```toml
+TICKETIQ_API_URL = "https://your-public-ticketiq-api.example.com"
+```
+
+Streamlit hosts only the Python frontend. Deploy the Spring Boot Docker image separately on a Java/container-capable
+host and make its API URL reachable over HTTPS. Configure `SPRING_PROFILES_ACTIVE=postgres`, a persistent PostgreSQL
+database (`TICKETIQ_DB_URL`, `TICKETIQ_DB_USER`, and `TICKETIQ_DB_PASSWORD`), and a private `JWT_SECRET` of at least
+32 characters in that backend host's environment settings. Do not commit deployment secrets. The Docker image listens
+on port 8080 by default; override `PORT` if the backend host assigns a different port.
 
 ## Tests and project code
 
 Run the test suite with `.\scripts\test.ps1` in PowerShell, or `bash scripts/test.sh` on macOS and Linux. It covers the
 AI pipeline, security, validation, and ticket workflows without needing an API key.
+Run the Streamlit API-client tests with
+`.\.venv\Scripts\python.exe -m unittest discover -s tests -v`.
 
 The project has two Java modules. `ticketiq-app` contains the Spring Boot API, security, persistence, and browser UI;
-`ticketiq-core` contains the ticket analysis, model clients, retrieval, and guardrails. The browser-only preview is in
-`hf-static-demo/`. More detail is in [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md),
+`ticketiq-core` contains the ticket analysis, model clients, retrieval, and guardrails. The optional browser-only
+sample is in `static-demo/`; unlike the Streamlit frontend, it does not call the API. More detail is in
+[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md),
 [docs/API.md](docs/API.md), and [docs/AI-INTEGRATION.md](docs/AI-INTEGRATION.md).
 
 ## Before using it beyond a demo

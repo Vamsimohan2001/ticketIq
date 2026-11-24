@@ -5,6 +5,10 @@ target/
 data/
 .env
 *.log
+__pycache__/
+.pytest_cache/
+.venv/
+.streamlit/secrets.toml
 # IDE noise
 .idea/
 *.iml

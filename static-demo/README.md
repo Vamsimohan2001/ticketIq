@@ -1,12 +1,3 @@
----
-title: TicketIQ Demo
-emoji: 🎫
-colorFrom: blue
-colorTo: indigo
-sdk: static
-pinned: false
----
-
 # TicketIQ Support Desk Demo
 
 This is a browser-only, interactive preview of TicketIQ. It uses sample data and simulated AI suggestions; there is no

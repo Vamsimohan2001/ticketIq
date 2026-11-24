@@ -8,11 +8,12 @@ WORKDIR /app
 COPY --from=build /workspace/ticketiq-app/target/ticketiq-app-2.0.0.jar /app/ticketiq-app.jar
 COPY docker-entrypoint.sh /app/docker-entrypoint.sh
 
-ENV PORT=7860 \
+ENV PORT=8080 \
     AI_PROVIDER=mock \
     AI_ENABLED=true \
     TICKETIQ_SEED=true \
-    TICKETIQ_DB_URL="jdbc:h2:mem:ticketiq;DB_CLOSE_DELAY=-1"
+    TICKETIQ_DB_URL="jdbc:h2:file:/app/data/ticketiq;DB_CLOSE_ON_EXIT=FALSE"
 
-EXPOSE 7860
+VOLUME ["/app/data"]
+EXPOSE 8080
 ENTRYPOINT ["/bin/sh", "/app/docker-entrypoint.sh"]

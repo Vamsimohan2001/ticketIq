@@ -5,3 +5,7 @@
 **/data
 *.log
 *.mv.db
+__pycache__/
+.pytest_cache/
+.venv/
+.streamlit/secrets.toml

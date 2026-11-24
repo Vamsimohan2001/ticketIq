@@ -22,6 +22,10 @@ ticket workflow decoupled, makes the AI easy to test, and lets it fail without h
                                                                  mock | Gemini | Ollama
 ```
 
+The optional Streamlit frontend is a separate Python client of the same authenticated REST API. Its server-side
+requests do not require browser CORS configuration. The Spring Boot app and its original browser UI remain the system
+of record.
+
 ## The three events
 
 | Event | Published by | Handled by |

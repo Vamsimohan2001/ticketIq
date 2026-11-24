@@ -34,6 +34,11 @@ class TicketFlowTest {
         return Json.parseObject(body);
     }
 
+    private void awaitTriage(long id, String token) {
+        Awaitility.await().atMost(Duration.ofSeconds(30)).untilAsserted(() ->
+                assertThat(Json.string(getJson("/api/tickets/" + id, token), "status")).isNotEqualTo("NEW"));
+    }
+
     @Test
     void ticketIsTriagedByTheAiThenOverriddenAndResolvedByAnAgent() throws Exception {
         String user = TestSupport.login(mvc, "user@ticketiq.local", "12345678");
@@ -108,12 +113,16 @@ class TicketFlowTest {
                 .andExpect(status().isOk())
                 .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath("$.items").isEmpty());
 
-        String response = mvc.perform(get("/api/tickets?status=RESOLVED")
+        String response = mvc.perform(get("/api/tickets?status=RESOLVED&size=100")
                         .header("Authorization", "Bearer " + agent))
                 .andExpect(status().isOk())
                 .andReturn().getResponse().getContentAsString();
         Map<String, Object> page = Json.parseObject(response);
-        Map<String, Object> firstResolved = Json.asMap(Json.asList(page.get("items")).getFirst());
+        Map<String, Object> firstResolved = Json.asList(page.get("items")).stream()
+                .map(Json::asMap)
+                .filter(ticket -> !"Uma User".equals(Json.string(ticket, "requesterName")))
+                .findFirst()
+                .orElseThrow();
         long resolvedId = Json.number(firstResolved, "id").longValue();
 
         mvc.perform(get("/api/tickets/" + resolvedId).header("Authorization", "Bearer " + user))
@@ -133,6 +142,7 @@ class TicketFlowTest {
                                 "description", "A requester should keep access to their closed incident."))))
                 .andExpect(status().isCreated()).andReturn().getResponse().getContentAsString();
         long id = Json.number(Json.parseObject(created), "id").longValue();
+        awaitTriage(id, user);
         mvc.perform(patch("/api/tickets/" + id + "/status").header("Authorization", "Bearer " + agent)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(Json.write(Map.of("status", "CLOSED", "resolution", "The service was restored."))))
@@ -160,6 +170,7 @@ class TicketFlowTest {
                                 "description", "The incident impact needs a review."))))
                 .andExpect(status().isCreated()).andReturn().getResponse().getContentAsString();
         long id = Json.number(Json.parseObject(created), "id").longValue();
+        awaitTriage(id, user);
 
         String request = mvc.perform(post("/api/tickets/" + id + "/requests")
                         .header("Authorization", "Bearer " + agent).contentType(MediaType.APPLICATION_JSON)
@@ -214,6 +225,7 @@ class TicketFlowTest {
                         .content(Json.write(Map.of("title", "Original title", "description", "Original details."))))
                 .andExpect(status().isCreated()).andReturn().getResponse().getContentAsString();
         long id = Json.number(Json.parseObject(created), "id").longValue();
+        awaitTriage(id, user);
         mvc.perform(patch("/api/tickets/" + id).header("Authorization", "Bearer " + user)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(Json.write(Map.of("title", "Updated title", "description", "Updated details."))))
