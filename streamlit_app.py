@@ -62,6 +62,15 @@ def _render_auth(api: TicketIqApi) -> None:
             st.session_state.pop("selected_ticket_id", None)
             st.session_state.pop("page", None)
             st.rerun()
+        st.caption("Demo accounts (password for all: `12345678`)")
+        st.markdown(
+            "- **USER:** Uma User (`user@ticketiq.local`)\n"
+            "- **AGENT:** Asha Agent (`agent@ticketiq.local`), Harper HR "
+            "(`agent.hr@ticketiq.local`), Finley Finance (`agent.finance@ticketiq.local`), "
+            "Taylor Technical (`agent.engineering@ticketiq.local`), Ari Access "
+            "(`agent.access@ticketiq.local`)\n"
+            "- **ADMIN:** Alex Admin (`admin@ticketiq.local`)"
+        )
     with request_account:
         with st.form("signup_form"):
             role = st.selectbox("Requested role", ["USER", "AGENT", "ADMIN"])
@@ -268,25 +277,15 @@ def main() -> None:
         api_url = _api_url()
         api = TicketIqApi(api_url)
     except (ValueError, KeyError, FileNotFoundError) as error:
-        st.error(f"TicketIQ API configuration error: {error}")
+        st.error("TicketIQ is temporarily unavailable. Please try again later.")
         return
-
-    with st.sidebar:
-        st.markdown("### Backend")
-        st.code(api_url, language=None)
-        st.link_button("Open full Spring Boot portal", api_url)
-        try:
-            health = api.request("GET", "/actuator/health", authenticated=False)
-            st.success(f"API status: {health.get('status', 'available')}")
-        except ApiError as error:
-            st.error(str(error))
 
     session = st.session_state.get("ticketiq_session")
     if not session:
         try:
             _render_auth(api)
         except ApiError as error:
-            st.error(str(error))
+            st.error("TicketIQ is temporarily unavailable. Please try again later.")
         return
 
     user = session["user"]
@@ -322,7 +321,7 @@ def main() -> None:
             st.session_state.pop("ticketiq_session", None)
             st.warning("Your session expired. Please sign in again.")
         else:
-            st.error(str(error))
+            st.error("TicketIQ is temporarily unavailable. Please try again later.")
 
 
 if __name__ == "__main__":
