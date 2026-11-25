@@ -88,18 +88,28 @@ $env:TICKETIQ_API_URL = "http://localhost:8080"
 .\.venv\Scripts\python.exe -m streamlit run streamlit_app.py
 ```
 
-For Streamlit Community Cloud, deploy this repository with `streamlit_app.py` as the app entrypoint, select Python
-3.12 or newer, and add the following secret in the app settings:
+For Streamlit Community Cloud, deploy this repository with `streamlit_app.py` as the app entrypoint and select Python
+3.12 or newer. First deploy the Spring Boot backend using the Render Blueprint below, then add its public base URL in
+the Streamlit app settings:
 
 ```toml
-TICKETIQ_API_URL = "https://your-public-ticketiq-api.example.com"
+TICKETIQ_API_URL = "https://your-ticketiq-api.onrender.com"
 ```
 
-Streamlit hosts only the Python frontend. Deploy the Spring Boot Docker image separately on a Java/container-capable
-host and make its API URL reachable over HTTPS. Configure `SPRING_PROFILES_ACTIVE=postgres`, a persistent PostgreSQL
-database (`TICKETIQ_DB_URL`, `TICKETIQ_DB_USER`, and `TICKETIQ_DB_PASSWORD`), and a private `JWT_SECRET` of at least
-32 characters in that backend host's environment settings. Do not commit deployment secrets. The Docker image listens
-on port 8080 by default; override `PORT` if the backend host assigns a different port.
+### Temporary Render backend
+
+The root `render.yaml` Blueprint provisions the Spring Boot Docker service and PostgreSQL in Singapore. To deploy it,
+open Render, select **New > Blueprint**, connect this GitHub repository on the `main` branch, and review the resources
+before deploying. Render assigns the backend's public `onrender.com` URL after the first successful deployment.
+
+The Blueprint generates a private JWT signing key and a random initial password for the seeded administrator. Find
+`TICKETIQ_SEED_PASSWORD` in the backend service's Render environment settings and use it to sign in as
+`admin@ticketiq.local`; change that password immediately after signing in.
+
+This configuration deliberately uses Render's free plans for a temporary demo only: the web service may sleep after
+inactivity, and the free PostgreSQL database expires after 30 days (with eventual deletion). Do not use real or
+sensitive ticket data. Upgrade the database to a paid plan before relying on it for persistent data. Streamlit hosts
+only the Python frontend; the backend URL must be publicly reachable over HTTPS.
 
 ## Tests and project code
 

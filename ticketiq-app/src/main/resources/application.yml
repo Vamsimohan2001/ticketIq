@@ -33,6 +33,7 @@ ticketiq:
     refresh-days: 7
   seed:
     enabled: ${TICKETIQ_SEED:true}
+    password: ${TICKETIQ_SEED_PASSWORD:12345678}
   ai:
     enabled: ${AI_ENABLED:true}
     provider: ${AI_PROVIDER:mock}            # mock | gemini | ollama

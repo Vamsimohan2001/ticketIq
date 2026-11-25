@@ -1,0 +1,41 @@
+services:
+  - type: web
+    name: ticketiq-api
+    runtime: docker
+    plan: free
+    region: singapore
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    healthCheckPath: /actuator/health
+    envVars:
+      - key: SPRING_PROFILES_ACTIVE
+        value: postgres
+      - key: TICKETIQ_DB_URL
+        fromDatabase:
+          name: ticketiq-db
+          property: connectionString
+      - key: TICKETIQ_DB_USER
+        fromDatabase:
+          name: ticketiq-db
+          property: user
+      - key: TICKETIQ_DB_PASSWORD
+        fromDatabase:
+          name: ticketiq-db
+          property: password
+      - key: TICKETIQ_SEED
+        value: "true"
+      - key: TICKETIQ_SEED_PASSWORD
+        generateValue: true
+      - key: JWT_SECRET
+        generateValue: true
+      - key: AI_PROVIDER
+        value: mock
+      - key: AI_ENABLED
+        value: "true"
+
+databases:
+  - name: ticketiq-db
+    plan: free
+    region: singapore
+    databaseName: ticketiq
+    user: ticketiq

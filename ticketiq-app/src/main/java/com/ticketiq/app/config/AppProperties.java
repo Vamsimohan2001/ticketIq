@@ -20,6 +20,6 @@ public record AppProperties(Jwt jwt, Ai ai, Seed seed) {
                      String ollamaEmbeddingModel) {
     }
 
-    public record Seed(boolean enabled) {
+    public record Seed(boolean enabled, String password) {
     }
 }
