@@ -62,6 +62,15 @@ def _render_auth(api: TicketIqApi) -> None:
             st.session_state.pop("selected_ticket_id", None)
             st.session_state.pop("page", None)
             st.rerun()
+        st.caption("Demo accounts (password for all: `12345678`)")
+        st.markdown(
+            "- **USER:** Uma User (`user@ticketiq.local`)\n"
+            "- **AGENT:** Asha Agent (`agent@ticketiq.local`), Harper HR "
+            "(`agent.hr@ticketiq.local`), Finley Finance (`agent.finance@ticketiq.local`), "
+            "Taylor Technical (`agent.engineering@ticketiq.local`), Ari Access "
+            "(`agent.access@ticketiq.local`)\n"
+            "- **ADMIN:** Alex Admin (`admin@ticketiq.local`)"
+        )
     with request_account:
         with st.form("signup_form"):
             role = st.selectbox("Requested role", ["USER", "AGENT", "ADMIN"])
@@ -270,16 +279,6 @@ def main() -> None:
     except (ValueError, KeyError, FileNotFoundError) as error:
         st.error(f"TicketIQ API configuration error: {error}")
         return
-
-    with st.sidebar:
-        st.markdown("### Backend")
-        st.code(api_url, language=None)
-        st.link_button("Open full Spring Boot portal", api_url)
-        try:
-            health = api.request("GET", "/actuator/health", authenticated=False)
-            st.success(f"API status: {health.get('status', 'available')}")
-        except ApiError as error:
-            st.error(str(error))
 
     session = st.session_state.get("ticketiq_session")
     if not session:

@@ -96,13 +96,14 @@ public class DataSeeder implements CommandLineRunner {
     }
 
     private User ensureUser(String userId, String name, Role role, String employeeId, String team) {
+        String initialPassword = props.seed().password();
         User user = users.findByUserIdIgnoreCase(userId).orElse(null);
         if (user == null) {
-            return users.save(new User(userId, encoder.encode("12345678"), name, role, employeeId, team, true));
+            return users.save(new User(userId, encoder.encode(initialPassword), name, role, employeeId, team, true));
         }
         String oldDemoPassword = role == Role.ADMIN ? "Admin@123" : role == Role.USER ? "User@123" : "Agent@123";
         if (encoder.matches(oldDemoPassword, user.getPasswordHash())) {
-            user.setPasswordHash(encoder.encode("12345678"));
+            user.setPasswordHash(encoder.encode(initialPassword));
         }
         user.setTeam(team);
         return users.save(user);

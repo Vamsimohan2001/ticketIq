@@ -18,7 +18,6 @@ Each step fails on its own. A broken model never throws out of the pipeline; it 
 the limit has been reached.
 
 ## Integration points
-
 | # | Integration point | What it does | Classes |
 |---|---|---|---|
 | IP-1 | Event contract | `TicketCreated`/`TicketResolved`/`KbChanged` decouple ticket lifecycle work from AI; triage results are applied directly by the handler, not published as a `TicketTriaged` event | `events/TicketEvents`, `ai/AiTriageHandler`, `ticket/TicketService` |
